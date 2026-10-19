@@ -1,5 +1,4 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
-<title>Melody Sketchpad</title>
+<title>Melody for Ear</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -50,7 +49,7 @@ svg#staff{display:block;width:100%;height:auto}
 .note.on .stem{stroke:var(--accent)}
 .note:focus{outline:none}
 .glyph{fill:var(--ink);font-family:var(--f-music)}
-.tsig{fill:var(--ink);font-family:var(--f-display);font-weight:700}
+.tsig{fill:var(--ink);font-family:var(--f-display);font-weight:800;font-variation-settings:"opsz" 11}
 .tup{stroke:var(--ink);fill:none} .tupn{fill:var(--ink);font-family:var(--f-display);font-style:italic;font-weight:700;font-size:15px}
 .lbl{font-family:var(--f-mono);font-size:12px;fill:var(--ink-soft)}
 .mv.step{fill:var(--step)} .mv.leap{fill:var(--leap)} .mv.fifth{fill:var(--fifth)}
@@ -148,7 +147,7 @@ kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--rule);border
 
 <div class="wrap">
   <header>
-    <h1>Melody Sketchpad <span class="ver">v3.0 beta</span></h1>
+    <h1>Melody for Ear <span class="ver">v3.0 beta</span></h1>
     <div class="meta" id="meta">C major · 4/4 · 2 bars</div>
   </header>
 
@@ -1478,6 +1477,7 @@ const TUNES = {"irish":[["A Bright May Morning","reel",1,0,"0e 7e 5e 4e 2q 1e 0e
   ear.addEventListener("pointerdown", e => { e.preventDefault(); peeking = true; scoreWrap.hidden = false; ear.hidden = true; });
   for (const ev of ["pointerup","pointercancel","touchend","touchcancel","blur"]) window.addEventListener(ev, endPeek);
   document.addEventListener("visibilitychange", endPeek);
+  document.addEventListener("visibilitychange", () => { if (document.hidden && playing) stop(); });   // stop sound when the app or tab goes to the background
   ear.addEventListener("contextmenu", e => e.preventDefault());
   scoreWrap.addEventListener("contextmenu", e => { if (peeking) e.preventDefault(); });
   // repeat
@@ -1498,5 +1498,3 @@ const TUNES = {"irish":[["A Bright May Morning","reel",1,0,"0e 7e 5e 4e 2q 1e 0e
   window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { const nw = svg.parentElement.clientWidth < 600; if (nw !== lastNarrow){ lastNarrow = nw; draw(); } }, 150); });
 })();
 </script>
-
-</body></html>
