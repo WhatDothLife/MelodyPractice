@@ -89,6 +89,15 @@ button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);box-s
 .mlabel{font-family:var(--f-display);font-style:italic;font-weight:500;font-size:14px;fill:var(--accent)}
 .hide-modes .mlabel:not(.chordlbl){display:none}
 .hide-chords .chordlbl{display:none}
+.hint-nochords .mlabel{display:none}
+.hints{display:inline-flex;flex-wrap:wrap;gap:8px}
+.hints.locked{opacity:.4;pointer-events:none}
+.hint-lbl{margin-left:2px}
+.peek-hint{margin:0 0 4px;text-align:center;font-size:13px;color:var(--ink-soft)}
+.lbl.big{font-size:17px;font-weight:500;fill:var(--ink)}
+.note.on .lbl{fill:var(--accent);font-weight:600}
+.hintline{stroke:var(--ink)}
+.score.hinting #scoreWrap{cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .barnum{font-family:var(--f-mono);font-size:12px;fill:var(--ink-soft)}
 .ear{cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
 .ear p{margin:0;color:var(--ink-soft);font-size:14px;max-width:46ch}
@@ -126,6 +135,8 @@ button:hover{filter:brightness(1.08)}
 .stale{outline:2.5px solid #D93A3A;outline-offset:3px}
 @media (prefers-reduced-motion:no-preference){.stale{animation:stalePulse 1.6s ease-in-out 2}}
 @keyframes stalePulse{50%{outline-color:transparent}}
+.new-row{display:flex}
+.new-row #newBtn{padding:12px 22px;font-size:16px}
 .ctl-group{display:inline-flex;gap:14px;flex-wrap:nowrap}
 .ctl-sep{width:1px;align-self:stretch;min-height:30px;background:var(--rule);margin:0 8px}
 .tempo{display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--ink-soft);margin-left:auto}
@@ -151,25 +162,39 @@ kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--rule);border
     <div class="meta" id="meta">C major · 4/4 · 2 bars</div>
   </header>
 
+  <div class="new-row">
+  <button class="primary" id="newBtn" type="button"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.6 6A6 6 0 1 0 14 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M14.5 2v4.5H10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>New melody</button>
+  </div>
+
   <p class="tune-info" id="tuneInfo" hidden></p>
   <section class="score" aria-label="Melody on a treble staff">
-    <div class="score-scroll" id="scoreWrap"><svg id="staff" viewBox="0 0 820 180" role="img" aria-label="Generated melody"></svg></div>
-    <div class="ear" id="ear" hidden>
-      <p>The staff is hidden. Press Play and listen. <strong>Press and hold here</strong> to peek at the staff.</p>
+    <p class="peek-hint" id="peekHint" hidden>Press and hold to see the full staff.</p>
+    <div class="score-scroll" id="scoreWrap" hidden><svg id="staff" viewBox="0 0 820 180" role="img" aria-label="Generated melody"></svg></div>
+    <div class="ear" id="ear">
+      <p>The staff is hidden. Press Play and listen. Turn on a hint below, or <strong>press and hold here</strong> to peek at the staff.</p>
       <div class="ear-bars" id="earBars" aria-hidden="true"></div>
     </div>
   </section>
 
   <fieldset class="rhythms" style="border:0;margin:0;padding:0">
     <legend class="grp-label" style="float:left;padding:0">View</legend>
-    <button type="button" class="chip on" id="labelsBtn" title="Switch between note letters, solfège and no labels"><span id="labelsTxt">Note letters</span></button>
-    <label class="chip"><input type="checkbox" id="hideStaffChk">Hide staff</label>
-    <label class="chip"><input type="checkbox" id="hideChordsChk" checked>Hide chords</label>
+    <label class="chip"><input type="checkbox" id="showStaffChk">Show staff</label>
+    <span class="divider" aria-hidden="true"></span>
+    <span class="grp-label hint-lbl" id="hintLbl">Hints</span>
+    <span class="hints" id="hints" role="group" aria-labelledby="hintLbl">
+      <label class="chip"><input type="checkbox" id="hintLetters">Letters</label>
+      <label class="chip"><input type="checkbox" id="hintRhythm">Rhythm</label>
+      <label class="chip"><input type="checkbox" id="hintChords">Chords</label>
+    </span>
+    <span class="divider" aria-hidden="true"></span>
+    <span class="grp-label" id="namesLbl">Names</span>
+    <span class="seg" role="radiogroup" aria-labelledby="namesLbl" id="namesSeg">
+      <label><input type="radio" name="names" value="letters" checked><span>Letters</span></label>
+      <label><input type="radio" name="names" value="solfege"><span>Solfège</span></label>
+    </span>
   </fieldset>
 
   <div class="controls">
-    <button class="primary" id="newBtn" type="button"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.6 6A6 6 0 1 0 14 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M14.5 2v4.5H10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>New melody</button>
-    <span class="ctl-sep" aria-hidden="true"></span>
     <span class="ctl-group">
     <button id="playBtn" type="button"><svg id="playIcon" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 1l9 5-9 5z" fill="currentColor"/></svg><span id="playTxt">Play</span></button>
     <button id="loopBtn" type="button" aria-pressed="false"><svg width="15" height="14" viewBox="0 0 16 14" aria-hidden="true"><path d="M3 6V5a2 2 0 0 1 2-2h8M11 1l2 2-2 2M13 8v1a2 2 0 0 1-2 2H3M5 13l-2-2 2-2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>Repeat</button>
@@ -951,7 +976,16 @@ const TUNES = {"irish":[["A Bright May Morning","reel",1,0,"0e 7e 5e 4e 2q 1e 0e
   let R = 810;   // right edge of the staff; narrower on phones so notes draw larger
   let PER = 2;   // bars per line; 1 when the melody uses sixteenths
   let TOP0 = 60, SYS_H = 150, LBL_Y = 106;
+  // what the staff area shows: the full staff, or only the hints that are switched on
+  const VIEW = { full:false, letters:false, rhythm:false, chords:false };
+  let peekFull = false, FULL = true;
   function layout(){
+    if (!FULL){   // compact hint view on a single line
+      TOP0 = VIEW.chords ? 48 : 26;
+      LBL_Y = VIEW.rhythm ? (VIEW.letters ? 2*SP + 30 : 2*SP + 20) : 2*SP + 18;
+      SYS_H = TOP0 + LBL_Y + 6;
+      return;
+    }
     const V = (melody && melody.view) || range;
     TOP0 = 56 + Math.max(0, V.hi - (BOT + 7))*SP/2;                 // room for notes above the staff + mode names
     LBL_Y = 4*SP + Math.max(58, (BOT - V.lo)*SP/2 + 26);       // note labels sit below the lowest possible note
@@ -966,7 +1000,7 @@ const TUNES = {"irish":[["A Bright May Morning","reel",1,0,"0e 7e 5e 4e 2q 1e 0e
     return ps.length && ps[Math.floor(ps.length/2)] < 0 ? "bass" : "treble";   // median below middle C reads better in bass clef
   }
   let KSW = 0;   // width of the key signature
-  const sysStart = s => (s === 0 ? 124 : 94) + KSW;
+  const sysStart = s => FULL ? (s === 0 ? 124 : 94) + KSW : (s === 0 && VIEW.rhythm ? 84 : 54);
   const barGeom = b => { const s = Math.floor(b/PER), st = sysStart(s), w = (R - st)/PER; return { s, top: sysTop(s), x: st + (b%PER)*w, w }; };
   const xOf = e => { const g = barGeom(e.bar); return g.x + PAD_L + (e.start/4)*(g.w - PAD_L - PAD_R); };
 
@@ -1032,18 +1066,36 @@ const TUNES = {"irish":[["A Bright May Morning","reel",1,0,"0e 7e 5e 4e 2q 1e 0e
 
   function draw(){
     svg.textContent = "";
-    const n = melody.nBars || adv.bars, nsys = Math.ceil(n/PER);
+    const n = melody.nBars || adv.bars;
     const narrow = (svg.parentElement.clientWidth || 900) < 600;   // phones: one bar per line so notes stay readable
     PER = narrow || melody.some(e => e.kind === "s") ? 1 : 2;
+    const nsys = Math.ceil(n/PER);
     R = narrow ? 540 : 810;
+    FULL = VIEW.full || peekFull;
+    svg.classList.toggle("hint-nochords", !FULL && !VIEW.chords);
     CLEF = chooseClef(); BOT = CLEF === "bass" ? -10 : 2;
     const sharps = Object.keys(melody.keySig || {}).length;   // G: F#; D: F#, C#
-    KSW = sharps ? sharps*11 + 4 : 0;
+    KSW = FULL && sharps ? sharps*11 + 4 : 0;
     document.querySelector(".score").setAttribute("aria-label", `Melody on a ${CLEF} staff`);
     layout();
     svg.setAttribute("viewBox", `0 0 ${R + 10} ${sysTop(nsys-1) + LBL_Y + 18}`);
     for (let sI=0; sI<nsys; sI++){
       const top = sysTop(sI), lastBar = Math.min(n, (sI+1)*PER) - 1, gEnd = barGeom(lastBar), end = gEnd.x + gEnd.w;
+      if (!FULL){   // hint view: a single line for rhythm, short bar marks otherwise
+        const mid = top + 2*SP, b1 = VIEW.rhythm ? mid - SP : mid - 16, b2 = VIEW.rhythm ? mid + SP : mid + 8;
+        if (VIEW.rhythm) el("line",{x1:L,x2:end,y1:mid,y2:mid,class:"hintline","stroke-width":1.2});
+        el("line",{x1:L,x2:L,y1:b1,y2:b2,class:"barline","stroke-width":1.4});
+        if (sI === 0 && VIEW.rhythm) for (const [d,y] of [["4",mid-3],["4",mid+21]]){ const t = el("text",{x:62,y,class:"tsig","font-size":22,"text-anchor":"middle"}); t.textContent=d; }
+        for (let b=sI*PER; b<=lastBar; b++){
+          const g = barGeom(b), bx = g.x + g.w;
+          if (b === n-1){ el("line",{x1:bx-6,x2:bx-6,y1:b1,y2:b2,class:"barline","stroke-width":1.2}); el("rect",{x:bx-3,y:b1,width:4,height:b2-b1,class:"head-fill"}); }
+          else el("line",{x1:bx,x2:bx,y1:b1,y2:b2,class:"barline","stroke-width":1.4});
+          const over = melody.modes && melody.modes[b] != null ? MODE_NAMES[melody.modes[b]] : melody.chords ? melody.chords[b] : null;
+          if (over && VIEW.chords){ const t = el("text",{x:g.x+10,y:mid - (VIEW.rhythm ? 50 : 26),class:"mlabel"}); t.textContent = over; }
+          if (b % PER === 0){ const num = el("text",{x:L-8,y:mid+4,class:"barnum","text-anchor":"end"}); num.textContent = b+1; }
+        }
+        continue;
+      }
       for (let k=0;k<5;k++) el("line",{x1:L,x2:end,y1:top+k*SP,y2:top+k*SP,class:"staffline","stroke-width":1.1});
       el("line",{x1:L,x2:L,y1:top,y2:top+4*SP,class:"barline","stroke-width":1.4});
       const clef = CLEF === "bass"
@@ -1073,6 +1125,7 @@ const TUNES = {"irish":[["A Bright May Morning","reel",1,0,"0e 7e 5e 4e 2q 1e 0e
     melody.forEach(e => {
       if (e.rest){
         const top = barGeom(e.bar).top, x = xOf(e);
+        if (!FULL && !VIEW.rhythm){ e.g = null; e.x = x; return; }
         const R = REST[e.kind] || REST.r4;
         const g = el("g",{"aria-label": R[1]});
         e.g = g; e.x = x;
@@ -1081,27 +1134,33 @@ const TUNES = {"irish":[["A Bright May Morning","reel",1,0,"0e 7e 5e 4e 2q 1e 0e
         return;
       }
       const top = barGeom(e.bar).top, yOf = i => yAtTop(i, top);
-      const x = xOf(e), y = yOf(e.idx);
+      const x = xOf(e), y = FULL ? yOf(e.idx) : top + 2*SP;   // hint view: every note on one line
       e.top = top;
       const g = el("g",{class:"note",tabindex:0,role:"button","aria-label":`${nameOf(e.idx, e.alt)}, ${durName[e.kind]}${e.trip?" triplet":""}`});
       e.g = g; e.x = x; e.y = y;
       g.addEventListener("click", () => tone(e.idx, 0.5, undefined, e.alt));
       g.addEventListener("keydown", ev => { if (ev.key==="Enter"){ ev.preventDefault(); tone(e.idx, 0.5, undefined, e.alt);} });
-      if (e.idx <= BOT - 2) for (let li=BOT-2; li>=e.idx; li-=2) el("line",{x1:x-10,x2:x+10,y1:yOf(li),y2:yOf(li),class:"ledger","stroke-width":1.2},g);
-      if (e.idx >= BOT + 10) for (let li=BOT+10; li<=e.idx; li+=2) el("line",{x1:x-10,x2:x+10,y1:yOf(li),y2:yOf(li),class:"ledger","stroke-width":1.2},g);
+      if (FULL && e.idx <= BOT - 2) for (let li=BOT-2; li>=e.idx; li-=2) el("line",{x1:x-10,x2:x+10,y1:yOf(li),y2:yOf(li),class:"ledger","stroke-width":1.2},g);
+      if (FULL && e.idx >= BOT + 10) for (let li=BOT+10; li<=e.idx; li+=2) el("line",{x1:x-10,x2:x+10,y1:yOf(li),y2:yOf(li),class:"ledger","stroke-width":1.2},g);
       el("rect",{x:x-11,y:Math.min(top-24,y-14),width:22,height:Math.max(top+4*SP+24,y+14)-Math.min(top-24,y-14),fill:"transparent"},g);
       const open = e.kind === "h" || e.kind === "dh" || e.kind === "w";
-      el("ellipse",{cx:x,cy:y,rx:e.kind==="w"?7.6:6.6,ry:4.7,transform:`rotate(${e.kind==="w"?-8:-20} ${x} ${y})`,
-        class:open?"head-open":"head-fill","stroke-width":open?1.9:0},g);
-      if (e.showAcc) drawAcc(x-15, y, e.alt, g);
-      if (e.kind === "dh" || e.kind === "dq" || e.kind === "de") el("circle",{cx:x+12,cy:e.idx%2===0?y-SP/2:y,r:1.9,class:"head-fill"},g);
-      e.up = e.idx < BOT + 4;          // stems up below the middle line
-      if (labelMode !== "off"){ const lb = el("text",{x,y:top+LBL_Y,class:"lbl","text-anchor":"middle"},g); lb.textContent = labelFor(e); }
+      if (FULL || VIEW.rhythm){
+        el("ellipse",{cx:x,cy:y,rx:e.kind==="w"?7.6:6.6,ry:4.7,transform:`rotate(${e.kind==="w"?-8:-20} ${x} ${y})`,
+          class:open?"head-open":"head-fill","stroke-width":open?1.9:0},g);
+        if (FULL && e.showAcc) drawAcc(x-15, y, e.alt, g);
+        if (e.kind === "dh" || e.kind === "dq" || e.kind === "de") el("circle",{cx:x+12,cy:FULL ? (e.idx%2===0?y-SP/2:y) : y-SP/2,r:1.9,class:"head-fill"},g);
+      }
+      e.up = FULL ? e.idx < BOT + 4 : true;          // stems up below the middle line (always up on the rhythm line)
+      if (FULL || VIEW.letters){
+        const ly = FULL ? top+LBL_Y : (VIEW.rhythm ? top + LBL_Y : top + 2*SP + 6);
+        const lb = el("text",{x,y:ly,class: !FULL && !VIEW.rhythm ? "lbl big" : "lbl","text-anchor":"middle"},g); lb.textContent = labelFor(e);
+      }
     });
     // groups that share a stem direction
     const by = key => { const m = {}; melody.forEach(e => { if (e[key] && !e.rest) (m[e[key]] ||= []).push(e); }); return Object.values(m); };
     const beams = by("beam"), tups = by("trip");
-    [...beams, ...tups].forEach(gr => { const up = gr.reduce((s,e)=>s+e.idx,0)/gr.length < BOT + 4; gr.forEach(e=>e.up=up); });
+    if (!FULL && !VIEW.rhythm){ svg.setAttribute("aria-label", "Melody: " + melody.filter(e => !e.rest).map(e => labelFor(e)).join(", ")); return; }   // letters/chords only: no stems or beams
+    [...beams, ...tups].forEach(gr => { const up = FULL ? gr.reduce((s,e)=>s+e.idx,0)/gr.length < BOT + 4 : true; gr.forEach(e=>e.up=up); });
     const stemX = e => e.up ? e.x+6.1 : e.x-6.1;
     // beamed groups
     const beamInfo = {};
@@ -1151,7 +1210,7 @@ const TUNES = {"irish":[["A Bright May Morning","reel",1,0,"0e 7e 5e 4e 2q 1e 0e
       el("path",{d:`M${a} ${yb+h} V${yb} H${m-9} M${m+9} ${yb} H${z} V${yb+h}`,class:"tup","stroke-width":1.2});
       const t = el("text",{x:m,y:yb+5,class:"tupn","text-anchor":"middle"}); t.textContent="3";
     });
-    svg.setAttribute("aria-label","Melody: " + melody.map(e=> e.rest ? "rest" : nameOf(e.idx, e.alt)).join(", "));
+    svg.setAttribute("aria-label", FULL ? "Melody: " + melody.map(e=> e.rest ? "rest" : nameOf(e.idx, e.alt)).join(", ") : "Rhythm of the melody");
   }
 
   // ---------- audio ----------
@@ -1388,10 +1447,6 @@ const TUNES = {"irish":[["A Bright May Morning","reel",1,0,"0e 7e 5e 4e 2q 1e 0e
     opt[key] = box.checked;
     box.addEventListener("change", () => { opt[key] = box.checked; markStale(); });
   }
-  // chord names over the bars (hidden by default)
-  const hideChordsChk = document.getElementById("hideChordsChk");
-  const syncChords = () => svg.classList.toggle("hide-chords", hideChordsChk.checked);
-  hideChordsChk.addEventListener("change", syncChords); syncChords();
   // key: like other settings, applies to the next New melody
   const modeDegs = [...document.querySelectorAll("#modeChips .deg")];
   function syncModeLetters(){ const K = KEYS[keyName], sh = K.sh[0]; modeDegs.forEach((sp, i) => { const L = deg(i + sh); sp.textContent = NAMES[L] + accTxt(K.sig[L] || 0); }); }
@@ -1458,28 +1513,36 @@ const TUNES = {"irish":[["A Bright May Morning","reel",1,0,"0e 7e 5e 4e 2q 1e 0e
   }));
   const modeNamesChk = document.getElementById("modeNamesChk");
   modeNamesChk.addEventListener("change", () => svg.classList.toggle("hide-modes", !modeNamesChk.checked));
-  // labels: letters -> solfege -> off
-  const labelsBtn = document.getElementById("labelsBtn"), labelsTxt = document.getElementById("labelsTxt");
-  const MODES = { letters:["C","Note letters"], solfege:["Do","Solfège"], off:["–","No labels"] };
-  function setLabels(m){
-    labelMode = m; labelsTxt.textContent = MODES[m][1];
-    labelsBtn.classList.toggle("on", m !== "off");
-    labelsBtn.setAttribute("aria-label", "Labels: " + MODES[m][1] + ". Click to change.");
+  // ---------- view: full staff, or hints while it is hidden
+  const scoreWrap = document.getElementById("scoreWrap"), ear = document.getElementById("ear"), earBars = document.getElementById("earBars");
+  const scoreSec = document.querySelector(".score"), peekHint = document.getElementById("peekHint"), hintsBox = document.getElementById("hints");
+  const showStaffChk = document.getElementById("showStaffChk");
+  const hintBoxes = { letters: document.getElementById("hintLetters"), rhythm: document.getElementById("hintRhythm"), chords: document.getElementById("hintChords") };
+  function syncView(){
+    VIEW.full = showStaffChk.checked;
+    for (const k in hintBoxes) VIEW[k] = hintBoxes[k].checked;
+    const anyHint = VIEW.letters || VIEW.rhythm || VIEW.chords, full = VIEW.full || peekFull;
+    hintsBox.classList.toggle("locked", VIEW.full);                 // the full staff already shows everything
+    scoreWrap.hidden = !(full || anyHint);
+    ear.hidden = !scoreWrap.hidden;
+    peekHint.hidden = full || !anyHint;
+    scoreSec.classList.toggle("hinting", !VIEW.full);
     draw();
   }
-  labelsBtn.addEventListener("click", () => setLabels({letters:"solfege", solfege:"off", off:"letters"}[labelMode]));
-  // hidden staff / ear-training view
-  const hideStaffChk = document.getElementById("hideStaffChk"), scoreWrap = document.getElementById("scoreWrap"), ear = document.getElementById("ear"), earBars = document.getElementById("earBars");
-  hideStaffChk.addEventListener("change", () => { scoreWrap.hidden = hideStaffChk.checked; ear.hidden = !hideStaffChk.checked; });
-  // press and hold the hidden-staff panel to peek; let go to hide it again
+  showStaffChk.addEventListener("change", syncView);
+  for (const k in hintBoxes) hintBoxes[k].addEventListener("change", syncView);
+  document.getElementById("namesSeg").addEventListener("change", e => { labelMode = e.target.value; draw(); });
+  // press and hold the hidden staff (or the hint view) to peek at the full staff; let go to hide it again
   let peeking = false;
-  const endPeek = () => { if (!peeking) return; peeking = false; if (hideStaffChk.checked){ scoreWrap.hidden = true; ear.hidden = false; } };
-  ear.addEventListener("pointerdown", e => { e.preventDefault(); peeking = true; scoreWrap.hidden = false; ear.hidden = true; });
+  const startPeek = e => { if (VIEW.full) return; e.preventDefault(); peeking = true; peekFull = true; syncView(); };
+  const endPeek = () => { if (!peeking) return; peeking = false; peekFull = false; syncView(); };
+  ear.addEventListener("pointerdown", startPeek);
+  scoreWrap.addEventListener("pointerdown", e => { if (!VIEW.full && !peekFull) startPeek(e); });
   for (const ev of ["pointerup","pointercancel","touchend","touchcancel","blur"]) window.addEventListener(ev, endPeek);
   document.addEventListener("visibilitychange", endPeek);
   document.addEventListener("visibilitychange", () => { if (document.hidden && playing) stop(); });   // stop sound when the app or tab goes to the background
   ear.addEventListener("contextmenu", e => e.preventDefault());
-  scoreWrap.addEventListener("contextmenu", e => { if (peeking) e.preventDefault(); });
+  scoreWrap.addEventListener("contextmenu", e => { if (!VIEW.full) e.preventDefault(); });
   // repeat
   const loopBtn = document.getElementById("loopBtn");
   function toggleLoop(){
@@ -1493,7 +1556,7 @@ const TUNES = {"irish":[["A Bright May Morning","reel",1,0,"0e 7e 5e 4e 2q 1e 0e
     else if (e.key===" " && !e.target.matches("button")){ e.preventDefault(); playing ? stop() : play(); }
   });
   if (document.fonts && document.fonts.load) document.fonts.load('48px "Noto Music"', "\u{1D11E}").then(()=>draw()).catch(()=>{});
-  melody = makeMelody(); draw(); renderEar(); setMeta(); showTune();
+  melody = makeMelody(); renderEar(); setMeta(); showTune(); syncView();
   let lastNarrow = null, rz = null;
   window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { const nw = svg.parentElement.clientWidth < 600; if (nw !== lastNarrow){ lastNarrow = nw; draw(); } }, 150); });
 })();
