@@ -98,6 +98,7 @@ button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);box-s
 .note.on .lbl{fill:var(--accent);font-weight:600}
 .hintline{stroke:var(--ink)}
 .score.hinting #scoreWrap{cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.octclef{font-family:var(--f-display);font-style:italic;font-weight:700;font-size:13px;fill:var(--ink)}
 .barnum{font-family:var(--f-mono);font-size:12px;fill:var(--ink-soft)}
 .ear{cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
 .ear p{margin:0;color:var(--ink-soft);font-size:14px;max-width:46ch}
@@ -217,12 +218,12 @@ kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--rule);border
     </div>
     <div class="adv-row">
       <span class="name" id="keyLbl">Key</span>
-      <div class="seg" role="radiogroup" aria-labelledby="keyLbl" id="keySeg">
-        <label><input type="radio" name="key" value="C" checked><span>C major</span></label>
-        <label><input type="radio" name="key" value="G"><span>G major</span></label>
-        <label><input type="radio" name="key" value="D"><span>D major</span></label>
+      <div class="modes" role="group" aria-labelledby="keyLbl" id="keySeg">
+        <label class="chip"><input type="checkbox" name="key" value="C" checked>C major</label>
+        <label class="chip"><input type="checkbox" name="key" value="G">G major</label>
+        <label class="chip"><input type="checkbox" name="key" value="D">D major</label>
       </div>
-      <span class="adv-note">Applies to the next new melody.</span>
+      <span class="adv-note">Pick one or more. Each new melody uses one of the selected keys.</span>
     </div>
     <div class="adv-row">
       <span class="name" id="rangeLbl">Note range</span>
@@ -250,7 +251,7 @@ kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--rule);border
         <label><input type="radio" name="clef" value="treble"><span>Treble</span></label>
         <label><input type="radio" name="clef" value="bass"><span>Bass</span></label>
       </div>
-      <span class="adv-note">Auto uses bass clef when most notes sit below middle C.</span>
+      <span class="adv-note">Auto uses bass clef when most notes sit below middle C. Treble or Bass shifts notes by octaves to fit the staff, marked with an 8 on the clef, like guitar music.</span>
     </div>
     <div class="adv-row">
       <span class="name">Accompaniment</span>
@@ -986,7 +987,7 @@ const TUNES = {"irish":[["A Bright May Morning","reel",1,0,"0e 7e 5e 4e 2q 1e 0e
       SYS_H = TOP0 + LBL_Y + 6;
       return;
     }
-    const V = (melody && melody.view) || range;
+    const V0 = (melody && melody.view) || range, V = { lo: V0.lo + DISP, hi: V0.hi + DISP };
     TOP0 = 56 + Math.max(0, V.hi - (BOT + 7))*SP/2;                 // room for notes above the staff + mode names
     LBL_Y = 4*SP + Math.max(58, (BOT - V.lo)*SP/2 + 26);       // note labels sit below the lowest possible note
     SYS_H = TOP0 + LBL_Y - 12;
@@ -994,6 +995,18 @@ const TUNES = {"irish":[["A Bright May Morning","reel",1,0,"0e 7e 5e 4e 2q 1e 0e
   const sysTop = s => TOP0 + s*SYS_H;
   let clefMode = "auto", CLEF = "treble", BOT = 2;   // BOT: bottom staff line (treble E4 = 2, bass G2 = -10)
   const yAtTop = (i, top) => (top + 4*SP) - (i-BOT)*SP/2;
+  // With Treble or Bass forced, notes are written whole octaves away from where they sound so they sit on the
+  // staff (like guitar music, written an octave above its sound). DISP is that shift in diatonic steps.
+  let DISP = 0;
+  function chooseDisp(){
+    if (clefMode === "auto") return 0;
+    const ps = melody.filter(e => !e.rest).map(e => e.idx);
+    if (!ps.length) return 0;
+    const ledgers = sh => ps.reduce((a, i) => { const p = i + sh; return a + (p < BOT - 1 ? Math.ceil((BOT - 1 - p)/2) : 0) + (p > BOT + 9 ? Math.ceil((p - BOT - 9)/2) : 0); }, 0);
+    const med = ps.slice().sort((a, b) => a - b)[Math.floor(ps.length/2)];
+    const cost = sh => ledgers(sh) + Math.abs(med + sh - (BOT + 4))*0.05 + (sh ? 0.5 : 0);   // small preference for written = sounding
+    return [-7, 0, 7].sort((a, b) => cost(a) - cost(b))[0];   // one octave at most, like guitar (treble 8 below) or piccolo-style 8 above
+  }
   function chooseClef(){
     if (clefMode !== "auto") return clefMode;
     const ps = melody.filter(e => !e.rest).map(e => e.idx).sort((a, b) => a - b);
@@ -1012,7 +1025,7 @@ const TUNES = {"irish":[["A Bright May Morning","reel",1,0,"0e 7e 5e 4e 2q 1e 0e
   // ---------------- keys: melodies are made in C, then moved into the chosen key
   // sh: diatonic shifts that move C to the key's tonic (either octave); sig: sharps by letter (0=C .. 6=B)
   const KEYS = { C:{ sh:[0,-7,7], sig:{} }, G:{ sh:[-3,4], sig:{3:1} }, D:{ sh:[1,-6], sig:{3:1,0:1} } };
-  let keyName = "C";
+  let keyName = "C", keySel = ["C"];   // keyName: the key of the melody being made
   const accTxt = a => a === 1 ? "\u266F" : a === -1 ? "\u266D" : "";
   function respellUp(e){   // keep accidentals single: a double sharp becomes the next letter
     const SE = [0,2,4,5,7,9,11];
@@ -1073,7 +1086,7 @@ const TUNES = {"irish":[["A Bright May Morning","reel",1,0,"0e 7e 5e 4e 2q 1e 0e
     R = narrow ? 540 : 810;
     FULL = VIEW.full || peekFull;
     svg.classList.toggle("hint-nochords", !FULL && !VIEW.chords);
-    CLEF = chooseClef(); BOT = CLEF === "bass" ? -10 : 2;
+    CLEF = chooseClef(); BOT = CLEF === "bass" ? -10 : 2; DISP = FULL ? chooseDisp() : 0;
     const sharps = Object.keys(melody.keySig || {}).length;   // G: F#; D: F#, C#
     KSW = FULL && sharps ? sharps*11 + 4 : 0;
     document.querySelector(".score").setAttribute("aria-label", `Melody on a ${CLEF} staff`);
@@ -1102,6 +1115,11 @@ const TUNES = {"irish":[["A Bright May Morning","reel",1,0,"0e 7e 5e 4e 2q 1e 0e
         ? el("text",{x:36,y:yAtTop(-4,top),class:"glyph","font-size":48})     // F clef curls around the F3 line
         : el("text",{x:38,y:yAtTop(4,top),class:"glyph","font-size":48});     // G clef curls around the G4 line
       clef.textContent = CLEF === "bass" ? "\u{1D122}" : "\u{1D11E}";
+      if (DISP){   // octave clef: 8 below = sounds an octave lower than written, 8 above = higher
+        const tag = "8", below = DISP > 0;
+        const cy = below ? yAtTop(BOT, top) + (CLEF === "bass" ? 20 : 30) : yAtTop(BOT + 8, top) - (CLEF === "bass" ? 26 : 30);
+        const t = el("text",{x:CLEF === "bass" ? 48 : 50,y:cy,class:"octclef","text-anchor":"middle"}); t.textContent = tag;
+      }
       // key signature on every line: F# then C#, at their standard places for the clef
       const KSPOS = CLEF === "bass" ? [-4, -7] : [10, 7];
       const kg = el("g",{"aria-label": `key signature: ${melody.key || "C"} major`});
@@ -1115,7 +1133,7 @@ const TUNES = {"irish":[["A Bright May Morning","reel",1,0,"0e 7e 5e 4e 2q 1e 0e
         } else el("line",{x1:bx,x2:bx,y1:top,y2:top+4*SP,class:"barline","stroke-width":1.4});
         const over = melody.modes && melody.modes[b] != null ? MODE_NAMES[melody.modes[b]] : melody.chords ? melody.chords[b] : null;
         const isMode = melody.modes && melody.modes[b] != null;
-        if (over){ const t = el("text",{x:g.x+10,y:top - Math.max(32, (((melody.view || range).hi) - (BOT + 8))*SP/2 + 26),class: isMode ? "mlabel" : "mlabel chordlbl"}); t.textContent = over; }
+        if (over){ const t = el("text",{x:g.x+10,y:top - Math.max(32, (((melody.view || range).hi) + DISP - (BOT + 8))*SP/2 + 26),class: isMode ? "mlabel" : "mlabel chordlbl"}); t.textContent = over; }
         if (b % PER === 0){ const num = el("text",{x:L-8,y:top+2*SP+4,class:"barnum","text-anchor":"end"}); num.textContent = b+1; }   // bar number left of the line
       }
     }
@@ -1134,23 +1152,24 @@ const TUNES = {"irish":[["A Bright May Morning","reel",1,0,"0e 7e 5e 4e 2q 1e 0e
         return;
       }
       const top = barGeom(e.bar).top, yOf = i => yAtTop(i, top);
-      const x = xOf(e), y = FULL ? yOf(e.idx) : top + 2*SP;   // hint view: every note on one line
+      const P = e.idx + DISP;   // where the note is written
+      const x = xOf(e), y = FULL ? yOf(P) : top + 2*SP;   // hint view: every note on one line
       e.top = top;
       const g = el("g",{class:"note",tabindex:0,role:"button","aria-label":`${nameOf(e.idx, e.alt)}, ${durName[e.kind]}${e.trip?" triplet":""}`});
       e.g = g; e.x = x; e.y = y;
       g.addEventListener("click", () => tone(e.idx, 0.5, undefined, e.alt));
       g.addEventListener("keydown", ev => { if (ev.key==="Enter"){ ev.preventDefault(); tone(e.idx, 0.5, undefined, e.alt);} });
-      if (FULL && e.idx <= BOT - 2) for (let li=BOT-2; li>=e.idx; li-=2) el("line",{x1:x-10,x2:x+10,y1:yOf(li),y2:yOf(li),class:"ledger","stroke-width":1.2},g);
-      if (FULL && e.idx >= BOT + 10) for (let li=BOT+10; li<=e.idx; li+=2) el("line",{x1:x-10,x2:x+10,y1:yOf(li),y2:yOf(li),class:"ledger","stroke-width":1.2},g);
+      if (FULL && P <= BOT - 2) for (let li=BOT-2; li>=P; li-=2) el("line",{x1:x-10,x2:x+10,y1:yOf(li),y2:yOf(li),class:"ledger","stroke-width":1.2},g);
+      if (FULL && P >= BOT + 10) for (let li=BOT+10; li<=P; li+=2) el("line",{x1:x-10,x2:x+10,y1:yOf(li),y2:yOf(li),class:"ledger","stroke-width":1.2},g);
       el("rect",{x:x-11,y:Math.min(top-24,y-14),width:22,height:Math.max(top+4*SP+24,y+14)-Math.min(top-24,y-14),fill:"transparent"},g);
       const open = e.kind === "h" || e.kind === "dh" || e.kind === "w";
       if (FULL || VIEW.rhythm){
         el("ellipse",{cx:x,cy:y,rx:e.kind==="w"?7.6:6.6,ry:4.7,transform:`rotate(${e.kind==="w"?-8:-20} ${x} ${y})`,
           class:open?"head-open":"head-fill","stroke-width":open?1.9:0},g);
         if (FULL && e.showAcc) drawAcc(x-15, y, e.alt, g);
-        if (e.kind === "dh" || e.kind === "dq" || e.kind === "de") el("circle",{cx:x+12,cy:FULL ? (e.idx%2===0?y-SP/2:y) : y-SP/2,r:1.9,class:"head-fill"},g);
+        if (e.kind === "dh" || e.kind === "dq" || e.kind === "de") el("circle",{cx:x+12,cy:FULL ? (((P%2)+2)%2===0?y-SP/2:y) : y-SP/2,r:1.9,class:"head-fill"},g);
       }
-      e.up = FULL ? e.idx < BOT + 4 : true;          // stems up below the middle line (always up on the rhythm line)
+      e.up = FULL ? P < BOT + 4 : true;          // stems up below the middle line (always up on the rhythm line)
       if (FULL || VIEW.letters){
         const ly = FULL ? top+LBL_Y : (VIEW.rhythm ? top + LBL_Y : top + 2*SP + 6);
         const lb = el("text",{x,y:ly,class: !FULL && !VIEW.rhythm ? "lbl big" : "lbl","text-anchor":"middle"},g); lb.textContent = labelFor(e);
@@ -1160,7 +1179,7 @@ const TUNES = {"irish":[["A Bright May Morning","reel",1,0,"0e 7e 5e 4e 2q 1e 0e
     const by = key => { const m = {}; melody.forEach(e => { if (e[key] && !e.rest) (m[e[key]] ||= []).push(e); }); return Object.values(m); };
     const beams = by("beam"), tups = by("trip");
     if (!FULL && !VIEW.rhythm){ svg.setAttribute("aria-label", "Melody: " + melody.filter(e => !e.rest).map(e => labelFor(e)).join(", ")); return; }   // letters/chords only: no stems or beams
-    [...beams, ...tups].forEach(gr => { const up = FULL ? gr.reduce((s,e)=>s+e.idx,0)/gr.length < BOT + 4 : true; gr.forEach(e=>e.up=up); });
+    [...beams, ...tups].forEach(gr => { const up = FULL ? gr.reduce((s,e)=>s+e.idx+DISP,0)/gr.length < BOT + 4 : true; gr.forEach(e=>e.up=up); });
     const stemX = e => e.up ? e.x+6.1 : e.x-6.1;
     // beamed groups
     const beamInfo = {};
@@ -1410,6 +1429,7 @@ const TUNES = {"irish":[["A Bright May Morning","reel",1,0,"0e 7e 5e 4e 2q 1e 0e
   function markStale(){ newBtn.classList.add("stale"); newBtn.title = "Settings changed. Press New melody to use them."; }
   function stamp(m){ m.nBars = adv.bars; m.view = { lo: range.lo, hi: range.hi }; return m; }
   function makeMelody(){
+    keyName = keySel[Math.floor(Math.random()*keySel.length)];
     const sh = KEYS[keyName].sh[0], saved = { lo: range.lo, hi: range.hi };
     range.lo = saved.lo - sh; range.hi = saved.hi - sh;          // generate in C, in the range that lands on the real one
     let base;
@@ -1449,11 +1469,17 @@ const TUNES = {"irish":[["A Bright May Morning","reel",1,0,"0e 7e 5e 4e 2q 1e 0e
   }
   // key: like other settings, applies to the next New melody
   const modeDegs = [...document.querySelectorAll("#modeChips .deg")];
-  function syncModeLetters(){ const K = KEYS[keyName], sh = K.sh[0]; modeDegs.forEach((sp, i) => { const L = deg(i + sh); sp.textContent = NAMES[L] + accTxt(K.sig[L] || 0); }); }
-  document.getElementById("keySeg").addEventListener("change", e => {
-    keyName = e.target.value; syncModeLetters();
-    markStale();   // the next New melody is made in this key; the current one stays as it is
-  });
+  function syncModeLetters(){   // mode chips name their starting note when a single key is selected
+    const one = keySel.length === 1, K = KEYS[keySel[0]], sh = K.sh[0];
+    modeDegs.forEach((sp, i) => { const L = deg(i + sh); sp.textContent = one ? NAMES[L] + accTxt(K.sig[L] || 0) : ""; sp.hidden = !one; });
+  }
+  const keyBoxes = [...document.querySelectorAll("#keySeg input")];
+  keyBoxes.forEach(box => box.addEventListener("change", () => {
+    if (!keyBoxes.some(b => b.checked)) box.checked = true;   // keep at least one key
+    keySel = keyBoxes.filter(b => b.checked).map(b => b.value);
+    syncModeLetters();
+    markStale();   // applies to the next New melody
+  }));
   syncModeLetters();
   // clef (display only: redraws the current melody)
   document.getElementById("clefSeg").addEventListener("change", e => { clefMode = e.target.value; draw(); });
