@@ -99,6 +99,33 @@ button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);box-s
 .hints{display:inline-flex;flex-wrap:wrap;gap:8px}
 .hints.locked{opacity:.4;pointer-events:none}
 .hint-lbl{margin-left:2px}
+.cof-btn{display:inline-flex;align-items:center;gap:14px;background:none;border:0;padding:0;margin:0;cursor:pointer;font:inherit;color:var(--ink);text-align:left}
+.cof-btn:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:50%}
+.cof-mini{width:104px;height:104px;flex:none}
+.cof-txt{font-size:14px;color:var(--ink)}
+.cof{display:block;overflow:visible}
+.cof-ring{fill:none;stroke:var(--ink-soft);stroke-width:1.6}
+.cof-seg path{fill:var(--desk);stroke:var(--ink-soft);stroke-width:1;transition:fill .15s}
+.cof-seg text{fill:var(--ink);font-family:var(--f-display);font-weight:700;font-size:21px;pointer-events:none}
+.cof-seg text .sm{font-size:12px}
+.cof-mini .cof-seg text .enh{display:none}
+.cof-seg.off path{fill:var(--paper)}
+.cof-seg.off text{fill:var(--ink-soft);opacity:.4}
+.cof-seg.on path{fill:var(--accent)}
+.cof-seg.on text{fill:var(--accent-ink)}
+.cof-big .cof-seg:not(.off){cursor:pointer}
+.cof-big .cof-seg:not(.off):not(.on):hover path{fill:color-mix(in srgb, var(--accent) 18%, var(--desk))}
+.cof-big .cof-seg:focus{outline:none}
+.cof-big .cof-seg:focus-visible path{stroke:var(--accent);stroke-width:2.5}
+.cof-big .cof-seg.off{cursor:not-allowed}
+.cof-center{fill:var(--ink-soft);font-family:var(--f-mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase}
+.key-dlg{box-sizing:border-box;max-width:calc(100vw - 24px);border:1px solid var(--rule);border-radius:10px;background:var(--paper);color:var(--ink);padding:20px 20px 18px;width:min(96vw,460px);box-shadow:0 12px 40px rgba(0,0,0,.25)}
+.key-dlg::backdrop{background:rgba(10,14,20,.45)}
+.key-dlg h3{margin:0 0 8px;font-family:var(--f-display);font-size:24px;font-weight:700}
+.key-dlg .cof-big{width:min(calc(96vw - 56px),400px);height:auto;margin:6px auto 14px}
+.key-dlg .adv-note{margin:0 0 14px;text-align:center;font-size:14px}
+.key-dlg-foot{display:flex;justify-content:flex-end}
+.key-dlg-foot .primary{min-height:44px;padding-inline:26px;font-size:16px}
 .key-hint{margin:0 0 6px;text-align:center;font-family:var(--f-mono);font-size:13px;letter-spacing:.04em;color:var(--accent)}
 .peek-hint{margin:0 0 4px;text-align:center;font-size:13px;color:var(--ink-soft)}
 .lbl.big{font-size:17px;font-weight:500;fill:var(--ink)}
@@ -166,7 +193,7 @@ kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--rule);border
 
 <div class="wrap">
   <header>
-    <h1>Melody for Ear <span class="ver">v3.5</span></h1>
+    <h1>Melody for Ear <span class="ver">v4.0</span></h1>
     <div class="meta" id="meta">2 bars</div>
   </header>
 
@@ -216,12 +243,15 @@ kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--rule);border
     </div>
     <div class="adv-row">
       <span class="name" id="keyLbl">Key</span>
-      <div class="modes" role="group" aria-labelledby="keyLbl" id="keySeg">
-        <label class="chip"><input type="checkbox" name="key" value="C" checked>C major</label>
-        <label class="chip"><input type="checkbox" name="key" value="G">G major</label>
-        <label class="chip"><input type="checkbox" name="key" value="D">D major</label>
-      </div>
-      <span class="adv-note">Pick one or more. Each new melody uses one of the selected keys.</span>
+      <button type="button" class="cof-btn" id="keyBtn" aria-haspopup="dialog">
+        <svg class="cof cof-mini" id="cofMini" viewBox="-104 -104 208 208" aria-hidden="true"></svg>
+      </button>
+      <dialog class="key-dlg" id="keyDlg" aria-labelledby="keyDlgTitle">
+        <h3 id="keyDlgTitle">Keys</h3>
+        <svg class="cof cof-big" id="cofBig" viewBox="-104 -104 208 208" role="group" aria-label="Circle of fifths"></svg>
+        <p class="adv-note">C, G and D are ready. The greyed-out keys are coming.</p>
+        <div class="key-dlg-foot"><button type="button" class="primary" id="keyDone">Done</button></div>
+      </dialog>
     </div>
     <div class="adv-row">
       <span class="name" id="meterLbl">Time</span>
@@ -1468,14 +1498,61 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
     const one = keySel.length === 1, K = KEYS[keySel[0]], sh = K.sh[0];
     modeDegs.forEach((sp, i) => { const L = deg(i + sh); sp.textContent = one ? NAMES[L] + accTxt(K.sig[L] || 0) : ""; sp.hidden = !one; });
   }
-  const keyBoxes = [...document.querySelectorAll("#keySeg input")];
-  keyBoxes.forEach(box => box.addEventListener("change", () => {
-    if (!keyBoxes.some(b => b.checked)) box.checked = true;   // keep at least one key
-    keySel = keyBoxes.filter(b => b.checked).map(b => b.value);
+  // ---- key picker: circle of fifths. Keys with data in KEYS are selectable; the rest are greyed out for now.
+  const COF = [["C"],["G"],["D"],["A"],["E"],["B","C\u266D"],["G\u266D","F\u266F"],["D\u266D","C\u266F"],["A\u266D"],["E\u266D"],["B\u266D"],["F"]];
+  const keyId = n => n.replace("\u266D", "b").replace("\u266F", "#");
+  const keyShow = id => id.replace("b", "\u266D").replace("#", "\u266F");
+  const keyBtn = document.getElementById("keyBtn"), keyDlg = document.getElementById("keyDlg");
+  const RO = 100, RI = 62, pol = (r, a) => [r*Math.cos(a), r*Math.sin(a)].map(v => v.toFixed(2)).join(" ");
+  function cofLabel(t, names){
+    const [m, ...rest] = names, add = (txt, cls, dx, dy) => { const sp = document.createElementNS(NS, "tspan"); sp.textContent = txt; if (cls) sp.setAttribute("class", cls); if (dx) sp.setAttribute("dx", dx); if (dy) sp.setAttribute("dy", dy); t.appendChild(sp); };
+    add(m[0]);
+    if (m[1]) add(m[1], "sm", 0.5, -8);                       // accidental raised, like the printed circle
+    if (rest[0]) add(rest[0], "sm enh", 0.5, m[1] ? 15 : 7);      // enharmonic name small and low
+  }
+  function buildCof(svgEl, big){
+    svgEl.innerHTML = "";
+    COF.forEach((names, i) => {
+      const id = keyId(names[0]), ok = !!KEYS[id], on = keySel.includes(id);
+      const a0 = (i*30 - 105)*Math.PI/180, a1 = (i*30 - 75)*Math.PI/180, am = (a0 + a1)/2;
+      const g = el("g", { class: `cof-seg${ok ? "" : " off"}${on ? " on" : ""}` }, svgEl);
+      el("path", { d: `M${pol(RO,a0)} A${RO} ${RO} 0 0 1 ${pol(RO,a1)} L${pol(RI,a1)} A${RI} ${RI} 0 0 0 ${pol(RI,a0)}Z` }, g);
+      const [tx, ty] = [81*Math.cos(am), 81*Math.sin(am)];
+      const t = el("text", { x: tx.toFixed(1), y: (ty + 7).toFixed(1), "text-anchor": "middle" }, g);
+      cofLabel(t, names);
+      if (names.length > 1 || names[0].length > 1) t.setAttribute("x", (tx - 4).toFixed(1));   // room for the accidental
+      if (!big) return;
+      const label = names.join(" / ") + " major";
+      if (ok){
+        g.setAttribute("tabindex", "0"); g.setAttribute("role", "checkbox"); g.setAttribute("aria-checked", on); g.setAttribute("aria-label", label);
+        const toggle = () => {
+          if (keySel.includes(id)){ if (keySel.length === 1) return; keySel = keySel.filter(k => k !== id); }   // keep at least one key
+          else keySel = COF.map(n => keyId(n[0])).filter(k => k === id || keySel.includes(k));
+          syncKeys(); markStale();   // applies to the next New melody
+          const again = svgEl.querySelectorAll(".cof-seg")[i]; if (again) again.focus();
+        };
+        g.addEventListener("click", toggle);
+        g.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); toggle(); } });
+      } else {
+        g.setAttribute("aria-disabled", "true"); g.setAttribute("aria-label", label + ", coming soon");
+        const tt = document.createElementNS(NS, "title"); tt.textContent = label + " (coming soon)"; g.appendChild(tt);
+      }
+    });
+    el("circle", { r: RO, class: "cof-ring" }, svgEl); el("circle", { r: RI, class: "cof-ring" }, svgEl);
+    if (big){ const c = el("text", { y: 4, "text-anchor": "middle", class: "cof-center" }, svgEl); c.textContent = "Pick one or more"; }
+  }
+  function syncKeys(){
+    buildCof(document.getElementById("cofMini"), false);
+    buildCof(document.getElementById("cofBig"), true);
+    const names = keySel.map(keyShow);
+    const keyTxt = (names.length > 1 ? names.slice(0, -1).join(", ") + " and " + names[names.length - 1] : names[0]) + " major";
+    keyBtn.setAttribute("aria-label", "Keys: " + keyTxt + ". Change keys"); keyBtn.title = keyTxt;
     syncModeLetters();
-    markStale();   // applies to the next New melody
-  }));
-  syncModeLetters();
+  }
+  keyBtn.addEventListener("click", () => { if (keyDlg.showModal) keyDlg.showModal(); else keyDlg.setAttribute("open", ""); });
+  document.getElementById("keyDone").addEventListener("click", () => keyDlg.close ? keyDlg.close() : keyDlg.removeAttribute("open"));
+  keyDlg.addEventListener("click", e => { if (e.target !== keyDlg) return; const r = keyDlg.getBoundingClientRect(); if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) keyDlg.close(); });   // tap outside the panel to close
+  syncKeys();
   const meterBoxes = [...document.querySelectorAll("#meterSeg input")];
   meterBoxes.forEach(box => box.addEventListener("change", () => {
     if (!meterBoxes.some(b => b.checked)) box.checked = true;   // keep at least one time signature
@@ -1582,7 +1659,7 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
   }
   loopBtn.addEventListener("click", toggleLoop);
   document.addEventListener("keydown", e => {
-    if (e.target.matches("input")) return;
+    if (e.target.matches("input") || keyDlg.open) return;
     if (e.key==="n"||e.key==="N"){ regenerate(); }
     else if (e.key==="r"||e.key==="R"){ toggleLoop(); }
     else if (e.key===" " && !e.target.matches("button")){ e.preventDefault(); playing ? stop() : play(); }
