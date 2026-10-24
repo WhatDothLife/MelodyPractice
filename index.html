@@ -60,6 +60,11 @@ svg#staff{display:block;width:100%;height:auto}
 .chip{position:relative;display:inline-flex;align-items:center;gap:8px;border:1px solid var(--rule);background:var(--paper);border-radius:999px;padding:6px 14px 6px 10px;cursor:pointer;font-size:14px;color:var(--ink-soft);user-select:none}
 .chip input{position:absolute;opacity:0;width:1px;height:1px}
 .chip .sym{font-family:var(--f-music);font-size:22px;line-height:1;min-width:20px;text-align:center;color:var(--ink-soft)}
+button.chip:disabled{opacity:.4;cursor:default}
+#revealBtn .count{font-family:var(--f-mono);font-size:12px;color:var(--ink-soft)}
+.names-btn{justify-content:center}
+button.chip.names-btn.on{border-color:var(--accent);color:var(--ink);box-shadow:inset 0 0 0 1px var(--accent)}
+.veil{fill:var(--paper)}
 button.chip{font:inherit;font-size:14px;border:1px solid var(--rule);padding:6px 14px 6px 10px;border-radius:999px;background:var(--paper);color:var(--ink-soft)}
 .chip.on{border-color:var(--accent);color:var(--ink);box-shadow:inset 0 0 0 1px var(--accent)}
 .chip.on .sym{color:var(--accent)}
@@ -94,6 +99,7 @@ button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);box-s
 .hints{display:inline-flex;flex-wrap:wrap;gap:8px}
 .hints.locked{opacity:.4;pointer-events:none}
 .hint-lbl{margin-left:2px}
+.key-hint{margin:0 0 6px;text-align:center;font-family:var(--f-mono);font-size:13px;letter-spacing:.04em;color:var(--accent)}
 .peek-hint{margin:0 0 4px;text-align:center;font-size:13px;color:var(--ink-soft)}
 .lbl.big{font-size:17px;font-weight:500;fill:var(--ink)}
 .note.on .lbl{fill:var(--accent);font-weight:600}
@@ -170,6 +176,7 @@ kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--rule);border
 
   <p class="tune-info" id="tuneInfo" hidden></p>
   <section class="score" aria-label="Melody on a treble staff">
+    <p class="key-hint" id="keyHint" hidden></p>
     <p class="peek-hint" id="peekHint" hidden>Press and hold to see the full staff.</p>
     <div class="score-scroll" id="scoreWrap" hidden><svg id="staff" viewBox="0 0 820 180" role="img" aria-label="Generated melody"></svg></div>
     <div class="ear" id="ear">
@@ -181,19 +188,15 @@ kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--rule);border
   <fieldset class="rhythms" style="border:0;margin:0;padding:0">
     <legend class="grp-label" style="float:left;padding:0">View</legend>
     <label class="chip"><input type="checkbox" id="showStaffChk">Show staff</label>
+    <button type="button" class="chip" id="revealBtn" title="Show the staff one bar at a time">Reveal bar</button>
     <span class="divider" aria-hidden="true"></span>
     <span class="grp-label hint-lbl" id="hintLbl">Hints</span>
+    <button type="button" class="chip names-btn" id="namesBtn" aria-pressed="false" title="Note names. Click to switch: off, letters, scale degrees, solfège. Works with the full staff too.">Letters</button>
     <span class="hints" id="hints" role="group" aria-labelledby="hintLbl">
-      <label class="chip"><input type="checkbox" id="hintLetters">Letters</label>
       <label class="chip"><input type="checkbox" id="hintRhythm">Rhythm</label>
-      <label class="chip"><input type="checkbox" id="hintChords">Chords</label>
     </span>
-    <span class="divider" aria-hidden="true"></span>
-    <span class="grp-label" id="namesLbl">Names</span>
-    <span class="seg" role="radiogroup" aria-labelledby="namesLbl" id="namesSeg">
-      <label><input type="radio" name="names" value="letters" checked><span>Letters</span></label>
-      <label><input type="radio" name="names" value="solfege"><span>Solfège</span></label>
-    </span>
+    <label class="chip" title="Shows the key of the melody"><input type="checkbox" id="hintKey">Key</label>
+    <label class="chip" title="Holds the root of each bar's chord under the melody"><input type="checkbox" id="rootDroneChk">Root drone</label>
   </fieldset>
 
   <div class="controls">
@@ -250,17 +253,11 @@ kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--rule);border
     <div class="adv-row">
       <span class="name" id="clefLbl">Clef</span>
       <div class="seg" role="radiogroup" aria-labelledby="clefLbl" id="clefSeg">
-        <label><input type="radio" name="clef" value="auto" checked><span>Auto</span></label>
-        <label><input type="radio" name="clef" value="treble"><span>Treble</span></label>
+        <label><input type="radio" name="clef" value="auto"><span>Auto</span></label>
+        <label><input type="radio" name="clef" value="treble" checked><span>Treble</span></label>
         <label><input type="radio" name="clef" value="bass"><span>Bass</span></label>
       </div>
       <span class="adv-note">Auto uses bass clef when most notes sit below middle C. Treble or Bass shifts notes by octaves to fit the staff, marked with an 8 on the clef, like guitar music.</span>
-    </div>
-    <div class="adv-row">
-      <span class="name">Accompaniment</span>
-      <label class="chip"><input type="checkbox" id="droneChk"><span class="sym">𝅝</span>Chord drone</label>
-      <label class="chip"><input type="checkbox" id="rootDroneChk"><span class="sym">𝅝</span>Root drone</label>
-      <span class="adv-note">Chord drone holds each bar's full chord; root drone holds just its root note. Pick one.</span>
     </div>
     <div class="adv-row lockable">
       <span class="name">Accidentals</span>
@@ -280,7 +277,7 @@ kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--rule);border
         <label class="chip"><input type="checkbox" data-genre="folk">Folk</label>
       </div>
     </div>
-    <p class="adv-note">Pick one or more styles and each new melody is an excerpt of a real tune, starting where a phrase starts. Irish: O'Neill's Music of Ireland (1903) and Dance Music of Ireland (1907). Bluegrass: Ryan's Mammoth Collection (1883) and a set of bluegrass/old-time jam standards. Folk: the Essen Folksong Collection and English and Scottish dance tunes from the Nottingham Music Database. Classical: Bach chorale melodies and string-quartet themes by Haydn, Mozart and Beethoven. In 3/4: Irish and Scottish airs and waltzes from O'Neill's and Aird's Selection (1782–1803), traditional waltzes and Essen folk songs, and Bach chorales and quartet minuets. Bluegrass has no 3/4 source tunes, so its waltzes are composed. The tune's name shows above the staff; its key is not shown. While a style is on, the rhythm, accidental and mode controls are paused.</p>
+    <p class="adv-note">Uses real musical sources as melodies.</p>
     <hr class="sep">
     <div class="adv-row">
       <label class="chip lockable"><input type="checkbox" id="modeChk"><span class="sym num">M</span>Mode focus</label>
@@ -294,7 +291,6 @@ kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--rule);border
       <label class="chip"><input type="checkbox" data-mode="4" checked disabled>Mixolydian <span class="deg">G</span></label>
       <label class="chip"><input type="checkbox" data-mode="5" checked disabled>Aeolian <span class="deg">A</span></label>
     </div>
-    <p class="adv-note">Each bar picks one of the selected modes and its chord becomes that mode's home chord. The tonic anchors the bar (first or last note, or beat 1 or 3), the color tone is brought in (B in Dorian and Lydian, F in Phrygian, Mixolydian and Aeolian, F and B in Ionian), and the melody ends on the last bar's tonic. A bar that doesn't clearly show its mode is labeled with its chord instead.</p>
   </section>
 
   <p class="hint">Click any note to hear it. Shortcuts: <kbd>N</kbd> new melody, <kbd>Space</kbd> play or stop, <kbd>R</kbd> repeat.</p>
@@ -999,7 +995,7 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
     SYS_H = TOP0 + LBL_Y - 12;
   }
   const sysTop = s => TOP0 + s*SYS_H;
-  let clefMode = "auto", CLEF = "treble", BOT = 2;   // BOT: bottom staff line (treble E4 = 2, bass G2 = -10)
+  let clefMode = "treble", CLEF = "treble", BOT = 2;   // BOT: bottom staff line (treble E4 = 2, bass G2 = -10)
   const yAtTop = (i, top) => (top + 4*SP) - (i-BOT)*SP/2;
   // With Treble or Bass forced, notes are written whole octaves away from where they sound so they sit on the
   // staff (like guitar music, written an octave above its sound). DISP is that shift in diatonic steps.
@@ -1027,7 +1023,7 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
   const nameOf = (i, a=0) => NAMES[deg(i)] + (a===1?" sharp":a===-1?" flat":"") + " " + (4 + Math.floor(i/7));
   const SOLF = ["Do","Re","Mi","Fa","Sol","La","Ti"], SOLF_UP = {0:"Di",1:"Ri",3:"Fi",4:"Si",5:"Li"}, SOLF_DN = {1:"Ra",2:"Me",4:"Se",5:"Le",6:"Te"};
   const TONIC = 0;   // movable do: the key's tonic is Do (C in C major)
-  let labelMode = "letters";
+  let labelMode = "off";   // note names: off, letters, numbers (scale degrees), solfege
   // ---------------- keys: melodies are made in C, then moved into the chosen key
   // sh: diatonic shifts that move C to the key's tonic (either octave); sig: sharps by letter (0=C .. 6=B)
   const KEYS = { C:{ sh:[0,-7,7], sig:{} }, G:{ sh:[-3,4], sig:{3:1} }, D:{ sh:[1,-6], sig:{3:1,0:1} } };
@@ -1064,8 +1060,9 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
   }
   function labelFor(e){
     const d = deg(e.idx);
-    if (labelMode === "solfege"){   // movable do: Do is the key's tonic
+    if (labelMode === "solfege" || labelMode === "numbers"){   // movable do / scale degrees: 1 and Do are the key's tonic
       const r = ((d - (melody.keyTonic ?? TONIC))%7+7)%7, a = e.rel ?? e.alt;
+      if (labelMode === "numbers") return (a===1 ? "♯" : a===-1 ? "♭" : "") + (r + 1);
       return a===1 ? SOLF_UP[r] : a===-1 ? SOLF_DN[r] : SOLF[r];
     }
     return NAMES[d] + (e.alt===1 ? "♯" : e.alt===-1 ? "♭" : "");
@@ -1084,14 +1081,28 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
     }
   }
 
+  // Reveal bar: the full staff with bars after the first revealN covered
+  let revealN = 0;
+  const revealing = () => !VIEW.full && !peekFull && revealN > 0 && revealN < (melody.nBars || adv.bars);
   function draw(){
+    drawStaff();
+    if (!revealing()) return;
+    const n = melody.nBars || adv.bars;
+    for (let b=revealN; b<n; b++){
+      const g = barGeom(b), top = g.top, bx = g.x + g.w, x0 = g.x + 1, x1 = b === n-1 ? bx - 7 : bx - 1.5;
+      el("rect",{x:x0, y:top + LBL_Y + 8 - SYS_H, width:x1 - x0, height:SYS_H, class:"veil"});   // from above the chord names down past the note names
+      for (let k=0;k<5;k++) el("line",{x1:x0-.5,x2:x1+.5,y1:top+k*SP,y2:top+k*SP,class:"staffline","stroke-width":1.1});
+    }
+    svg.setAttribute("aria-label", `Bars 1 to ${revealN} shown`);
+  }
+  function drawStaff(){
     svg.textContent = "";
     const n = melody.nBars || adv.bars;
     const narrow = (svg.parentElement.clientWidth || 900) < 600;   // phones: one bar per line so notes stay readable
     PER = narrow || melody.some(e => e.kind === "s") ? 1 : 2;
     const nsys = Math.ceil(n/PER);
     R = narrow ? 540 : 810;
-    FULL = VIEW.full || peekFull;
+    FULL = VIEW.full || peekFull || revealN > 0;
     svg.classList.toggle("hint-nochords", !FULL && !VIEW.chords);
     CLEF = chooseClef(); BOT = CLEF === "bass" ? -10 : 2; DISP = FULL ? chooseDisp() : 0;
     const sharps = Object.keys(melody.keySig || {}).length;   // G: F#; D: F#, C#
@@ -1140,7 +1151,7 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
         } else el("line",{x1:bx,x2:bx,y1:top,y2:top+4*SP,class:"barline","stroke-width":1.4});
         const over = melody.modes && melody.modes[b] != null ? MODE_NAMES[melody.modes[b]] : melody.chords ? melody.chords[b] : null;
         const isMode = melody.modes && melody.modes[b] != null;
-        if (over){ const t = el("text",{x:g.x+10,y:top - Math.max(32, (((melody.view || range).hi) + DISP - (BOT + 8))*SP/2 + 26),class: isMode ? "mlabel" : "mlabel chordlbl"}); t.textContent = over; }
+        if (over && isMode){ const t = el("text",{x:g.x+10,y:top - Math.max(32, (((melody.view || range).hi) + DISP - (BOT + 8))*SP/2 + 26),class: isMode ? "mlabel" : "mlabel chordlbl"}); t.textContent = over; }
         if (b % PER === 0){ const num = el("text",{x:L-8,y:top+2*SP+4,class:"barnum","text-anchor":"end"}); num.textContent = b+1; }   // bar number left of the line
       }
     }
@@ -1177,7 +1188,7 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
         if (e.kind === "dh" || e.kind === "dq" || e.kind === "de") el("circle",{cx:x+12,cy:FULL ? (((P%2)+2)%2===0?y-SP/2:y) : y-SP/2,r:1.9,class:"head-fill"},g);
       }
       e.up = FULL ? P < BOT + 4 : true;          // stems up below the middle line (always up on the rhythm line)
-      if (FULL || VIEW.letters){
+      if (VIEW.letters){
         const ly = FULL ? top+LBL_Y : (VIEW.rhythm ? top + LBL_Y : top + 2*SP + 6);
         const lb = el("text",{x,y:ly,class: !FULL && !VIEW.rhythm ? "lbl big" : "lbl","text-anchor":"middle"},g); lb.textContent = labelFor(e);
       }
@@ -1427,7 +1438,7 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
   }
   function regenerate(){
     const was = playing; stop();
-    melody = makeMelody(); draw(); renderEar(); setMeta(); showTune(); warmPiano(melody);
+    melody = makeMelody(); revealN = 0; syncView(); renderEar(); setMeta(); showTune(); warmPiano(melody);
     newBtn.classList.remove("stale"); newBtn.removeAttribute("title");
     if (was) play();
   }
@@ -1493,9 +1504,8 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
   rangeLo.addEventListener("input", () => onRange("lo")); rangeHi.addEventListener("input", () => onRange("hi"));
   rangeLo.addEventListener("change", markStale); rangeHi.addEventListener("change", markStale);
   onRange();
-  const droneChk = document.getElementById("droneChk"), rootDroneChk = document.getElementById("rootDroneChk");
-  droneChk.addEventListener("change", () => { if (droneChk.checked) rootDroneChk.checked = false; droneOn = droneChk.checked ? "chord" : rootDroneChk.checked ? "root" : false; });
-  rootDroneChk.addEventListener("change", () => { if (rootDroneChk.checked) droneChk.checked = false; droneOn = rootDroneChk.checked ? "root" : droneChk.checked ? "chord" : false; });
+  const rootDroneChk = document.getElementById("rootDroneChk");
+  rootDroneChk.addEventListener("change", () => { droneOn = rootDroneChk.checked ? "root" : false; if (playing) play(); });
   // experimental: style engine
   const genreBoxes = [...document.querySelectorAll("#genreChips input")];
   genreBoxes.forEach(box => box.addEventListener("change", () => {
@@ -1522,21 +1532,38 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
   const scoreWrap = document.getElementById("scoreWrap"), ear = document.getElementById("ear"), earBars = document.getElementById("earBars");
   const scoreSec = document.querySelector(".score"), peekHint = document.getElementById("peekHint"), hintsBox = document.getElementById("hints");
   const showStaffChk = document.getElementById("showStaffChk");
-  const hintBoxes = { letters: document.getElementById("hintLetters"), rhythm: document.getElementById("hintRhythm"), chords: document.getElementById("hintChords") };
+  const hintBoxes = { rhythm: document.getElementById("hintRhythm") };
+  const keyHint = document.getElementById("keyHint"), hintKey = document.getElementById("hintKey");
+  hintKey.addEventListener("change", syncView);
+  const revealBtn = document.getElementById("revealBtn");
   function syncView(){
     VIEW.full = showStaffChk.checked;
     for (const k in hintBoxes) VIEW[k] = hintBoxes[k].checked;
-    const anyHint = VIEW.letters || VIEW.rhythm || VIEW.chords, full = VIEW.full || peekFull;
-    hintsBox.classList.toggle("locked", VIEW.full);                 // the full staff already shows everything
+    VIEW.letters = labelMode !== "off";
+    if (VIEW.full) revealN = 0;
+    const n = melody.nBars || adv.bars;
+    const anyHint = VIEW.letters || VIEW.rhythm || revealN > 0, full = VIEW.full || peekFull;
+    hintsBox.classList.toggle("locked", VIEW.full || revealN > 0);  // the staff already shows everything (or is being revealed)
+    revealBtn.disabled = VIEW.full;
+    revealBtn.innerHTML = revealN >= n ? "Hide bars" : revealN ? `Reveal bar <span class="count">${revealN}/${n}</span>` : "Reveal bar";
     scoreWrap.hidden = !(full || anyHint);
     ear.hidden = !scoreWrap.hidden;
     peekHint.hidden = full || !anyHint;
+    keyHint.hidden = !hintKey.checked;
+    keyHint.textContent = (melody.modes && melody.modes.some(m => m != null) || !melody.flavor ? (melody.key || "C") + " major" : melody.flavor).replace(/ (major|minor)$/, (m, w) => " " + w[0].toUpperCase() + w.slice(1));   // mode focus changes mode by bar: name the key signature
     scoreSec.classList.toggle("hinting", !VIEW.full);
     draw();
   }
   showStaffChk.addEventListener("change", syncView);
+  revealBtn.addEventListener("click", () => { revealN = revealN >= (melody.nBars || adv.bars) ? 0 : revealN + 1; syncView(); });
   for (const k in hintBoxes) hintBoxes[k].addEventListener("change", syncView);
-  document.getElementById("namesSeg").addEventListener("change", e => { labelMode = e.target.value; draw(); });
+  const NAME_MODES = [["off","Letters"],["letters","Letters"],["numbers","Scale degrees"],["solfege","Solfège"]], namesBtn = document.getElementById("namesBtn");
+  namesBtn.addEventListener("click", () => {   // off (greyed) → letters → scale degrees → solfège; also labels the full staff
+    const i = (NAME_MODES.findIndex(m => m[0] === labelMode) + 1) % NAME_MODES.length;
+    labelMode = NAME_MODES[i][0]; namesBtn.textContent = NAME_MODES[i][1];
+    namesBtn.classList.toggle("on", labelMode !== "off"); namesBtn.setAttribute("aria-pressed", labelMode !== "off");
+    syncView();
+  });
   // press and hold the hidden staff (or the hint view) to peek at the full staff; let go to hide it again
   let peeking = false;
   const startPeek = e => { if (VIEW.full) return; e.preventDefault(); peeking = true; peekFull = true; syncView(); };
