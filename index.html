@@ -130,6 +130,7 @@ button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);box-s
 .key-dlg .cof-big{width:min(calc(96vw - 56px),400px);height:auto;margin:6px auto 14px}
 .key-dlg .adv-note{margin:0 0 14px;text-align:center;font-size:14px}
 .key-dlg-foot{display:flex;justify-content:flex-end}
+.key-dlg-foot .primary:disabled{opacity:.4;cursor:not-allowed;filter:none}
 .key-dlg-foot .primary{min-height:44px;padding-inline:26px;font-size:16px}
 .key-hint{margin:0 0 6px;text-align:center;font-family:var(--f-mono);font-size:13px;letter-spacing:.04em;color:var(--accent)}
 .peek-hint{margin:0 0 4px;text-align:center;font-size:13px;color:var(--ink-soft)}
@@ -265,7 +266,7 @@ kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--rule);border
       <dialog class="key-dlg" id="keyDlg" aria-labelledby="keyDlgTitle">
         <h3 id="keyDlgTitle">Keys</h3>
         <svg class="cof cof-big" id="cofBig" viewBox="-104 -104 208 208" role="group" aria-label="Circle of fifths"></svg>
-        <p class="adv-note" id="keyReady">C, G, D, F and B♭ are ready. The greyed-out keys are coming.</p>
+        <p class="adv-note" id="keyReady">Each new melody uses one of the selected keys.</p>
         <div class="key-dlg-foot"><button type="button" class="primary" id="keyDone">Done</button></div>
       </dialog>
     </div>
@@ -1076,7 +1077,13 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
   // ---------------- keys: melodies are made in C, then moved into the chosen key
   // sh: diatonic shifts that move C to the key's tonic (either octave); sig: sharps by letter (0=C .. 6=B)
   const KEYS = { C:{ sh:[0,-7,7], sig:{}, ord:[] }, G:{ sh:[-3,4], sig:{3:1}, ord:[3] }, D:{ sh:[1,-6], sig:{3:1,0:1}, ord:[3,0] },
-                 F:{ sh:[3,-4], sig:{6:-1}, ord:[6] }, Bb:{ sh:[-1,6], sig:{6:-1,2:-1}, ord:[6,2] } };   // ord: signature order (F C G... / B E A...)
+                 A:{ sh:[-2,5], sig:{3:1,0:1,4:1}, ord:[3,0,4] }, E:{ sh:[2,-5], sig:{3:1,0:1,4:1,1:1}, ord:[3,0,4,1] },
+                 B:{ sh:[-1,6], sig:{3:1,0:1,4:1,1:1,5:1}, ord:[3,0,4,1,5] },
+                 F:{ sh:[3,-4], sig:{6:-1}, ord:[6] }, Bb:{ sh:[-1,6], sig:{6:-1,2:-1}, ord:[6,2] },
+                 Eb:{ sh:[2,-5], sig:{6:-1,2:-1,5:-1}, ord:[6,2,5] }, Ab:{ sh:[-2,5], sig:{6:-1,2:-1,5:-1,1:-1}, ord:[6,2,5,1] },
+                 Db:{ sh:[1,-6], sig:{6:-1,2:-1,5:-1,1:-1,4:-1}, ord:[6,2,5,1,4] },
+                 Gb:{ sh:[-3,4], sig:{6:-1,2:-1,5:-1,1:-1,4:-1,0:-1}, ord:[6,2,5,1,4,0] } };
+  // sh: diatonic shifts that move C to the key's tonic; sig: accidental by letter (0=C .. 6=B); ord: signature order (F C G D A E B / B E A D G C F)
   let meterSel = [4];   // time signatures to choose from (beats per bar)
   let keyName = "C", keySel = ["C"];   // keyName: the key of the melody being made
   const accTxt = a => a === 1 ? "\u266F" : a === -1 ? "\u266D" : "";
@@ -1542,6 +1549,7 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
   // key: like other settings, applies to the next New melody
   const modeDegs = [...document.querySelectorAll("#modeChips .deg")];
   function syncModeLetters(){   // mode chips name their starting note when a single key is selected
+    if (!keySel.length) return;
     const one = keySel.length === 1, K = KEYS[keySel[0]], sh = K.sh[0];
     modeDegs.forEach((sp, i) => { const L = deg(i + sh); sp.textContent = one ? NAMES[L] + accTxt(K.sig[L] || 0) : ""; sp.hidden = !one; });
   }
@@ -1573,7 +1581,7 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
       if (ok){
         g.setAttribute("tabindex", "0"); g.setAttribute("role", "checkbox"); g.setAttribute("aria-checked", on); g.setAttribute("aria-label", label);
         const toggle = () => {
-          if (keySel.includes(id)){ if (keySel.length === 1) return; keySel = keySel.filter(k => k !== id); }   // keep at least one key
+          if (keySel.includes(id)) keySel = keySel.filter(k => k !== id);   // may go empty; Done stays off until a key is picked
           else keySel = COF.map(n => keyId(n[0])).filter(k => k === id || keySel.includes(k));
           syncKeys(); markStale();   // applies to the next New melody
           const again = svgEl.querySelectorAll(".cof-seg")[i]; if (again) again.focus();
@@ -1586,19 +1594,22 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
       }
     });
     el("circle", { r: RO, class: "cof-ring" }, svgEl); el("circle", { r: RI, class: "cof-ring" }, svgEl);
-    if (big){ const c = el("text", { y: 4, "text-anchor": "middle", class: "cof-center" }, svgEl); c.textContent = "Pick one or more"; }
+    if (big){ const c = el("text", { y: 4, "text-anchor": "middle", class: "cof-center" }, svgEl); c.textContent = keySel.length ? "Pick one or more" : "Pick at least one"; }
   }
   function syncKeys(){
     buildCof(document.getElementById("cofMini"), false);
     buildCof(document.getElementById("cofBig"), true);
     const names = keySel.map(keyShow);
+    document.getElementById("keyDone").disabled = !keySel.length;
+    if (!keySel.length){ keyBtn.setAttribute("aria-label", "No keys selected. Change keys"); keyBtn.title = "No keys selected"; return; }
     const keyTxt = (names.length > 1 ? names.slice(0, -1).join(", ") + " and " + names[names.length - 1] : names[0]) + " major";
     keyBtn.setAttribute("aria-label", "Keys: " + keyTxt + ". Change keys"); keyBtn.title = keyTxt;
     syncModeLetters();
   }
   keyBtn.addEventListener("click", () => { if (keyDlg.showModal) keyDlg.showModal(); else keyDlg.setAttribute("open", ""); });
   document.getElementById("keyDone").addEventListener("click", () => keyDlg.close ? keyDlg.close() : keyDlg.removeAttribute("open"));
-  keyDlg.addEventListener("click", e => { if (e.target !== keyDlg) return; const r = keyDlg.getBoundingClientRect(); if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) keyDlg.close(); });   // tap outside the panel to close
+  keyDlg.addEventListener("cancel", e => { if (!keySel.length) e.preventDefault(); });   // Escape can't close it with no key picked
+  keyDlg.addEventListener("click", e => { if (e.target !== keyDlg || !keySel.length) return; const r = keyDlg.getBoundingClientRect(); if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) keyDlg.close(); });   // tap outside the panel to close
   syncKeys();
   const meterBoxes = [...document.querySelectorAll("#meterSeg input")];
   meterBoxes.forEach(box => box.addEventListener("change", () => {
