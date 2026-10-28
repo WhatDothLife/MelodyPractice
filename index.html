@@ -123,6 +123,14 @@ button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);box-s
 .cof-big .cof-seg:focus{outline:none}
 .cof-big .cof-seg:focus-visible path{stroke:var(--accent);stroke-width:2.5}
 .cof-big .cof-seg.off{cursor:not-allowed}
+.cof-all{cursor:pointer}
+.cof-all circle{fill:var(--paper);stroke:var(--accent);stroke-width:1.6;transition:fill .15s}
+.cof-all text{fill:var(--accent);font:600 13px var(--f-body);pointer-events:none}
+.cof-all:hover circle{fill:color-mix(in srgb, var(--accent) 12%, var(--paper))}
+.cof-all.on circle{fill:var(--accent)}
+.cof-all.on text{fill:var(--accent-ink)}
+.cof-all:focus{outline:none}
+.cof-all:focus-visible circle{stroke-width:3}
 .cof-center{fill:var(--ink-soft);font-family:var(--f-mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase}
 .key-dlg{box-sizing:border-box;max-width:calc(100vw - 24px);border:1px solid var(--rule);border-radius:10px;background:var(--paper);color:var(--ink);padding:20px 20px 18px;width:min(96vw,460px);box-shadow:0 12px 40px rgba(0,0,0,.25)}
 .key-dlg::backdrop{background:rgba(10,14,20,.45)}
@@ -283,6 +291,10 @@ kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--rule);border
     <div class="adv-row">
       <label class="name" for="bpm">Tempo</label>
       <span class="tempo"><input type="range" id="bpm" min="50" max="160" step="1" value="92"><output id="bpmOut" for="bpm">92 bpm</output></span>
+    </div>
+    <div class="adv-row">
+      <span class="name" id="autoPlayLbl">Playback</span>
+      <label class="chip"><input type="checkbox" id="autoPlayChk">Auto-play new melodies</label>
     </div>
     <div class="adv-row">
       <span class="name" id="rangeLbl">Note range</span>
@@ -1527,8 +1539,9 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
   function regenerate(){
     const was = playing; stop();
     freshMelody();
-    if (was) play();
+    if (was || autoPlayChk.checked) play();   // Auto-play: start each new melody right away
   }
+  const autoPlayChk = document.getElementById("autoPlayChk");
   document.getElementById("newBtn").addEventListener("click", regenerate);
   playBtn.addEventListener("click", ()=> playing ? stop() : play());
   for (const [id,key] of [["optQ","q"],["optE","e"],["optX","x"],["optT","t"],["optS","s"]]){
@@ -1597,13 +1610,23 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
       }
     });
     el("circle", { r: RO, class: "cof-ring" }, svgEl); el("circle", { r: RI, class: "cof-ring" }, svgEl);
-    if (big){ const c = el("text", { y: 4, "text-anchor": "middle", class: "cof-center" }, svgEl); c.textContent = keySel.length ? "Pick one or more" : "Pick at least one"; }
+    if (big){   // "All keys" button in the middle of the circle
+      const ready = COF.map(n => keyId(n[0])).filter(k => KEYS[k]), all = ready.every(k => keySel.includes(k));
+      const g = el("g", { class: `cof-all${all ? " on" : ""}`, tabindex: 0, role: "button", "aria-pressed": all, "aria-label": all ? "Clear all keys" : "Select all keys" }, svgEl);
+      el("circle", { r: 40 }, g);
+      const t = el("text", { y: 5, "text-anchor": "middle" }, g); t.textContent = "All keys";
+      const selectAll = () => { keySel = all ? [] : ready.slice(); syncKeys();   // toggle: all on, or all off (Done waits for a pick)
+        markStale(); const a = svgEl.querySelector(".cof-all"); if (a) a.focus(); };
+      g.addEventListener("click", selectAll);
+      g.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); selectAll(); } });
+    }
   }
   function syncKeys(){
     buildCof(document.getElementById("cofMini"), false);
     buildCof(document.getElementById("cofBig"), true);
     const names = keySel.map(keyShow);
     document.getElementById("keyDone").disabled = !keySel.length;
+    document.getElementById("keyReady").textContent = keySel.length ? "Each new melody uses one of the selected keys." : "Pick at least one key.";
     if (!keySel.length){ keyBtn.setAttribute("aria-label", "No keys selected. Change keys"); keyBtn.title = "No keys selected"; return; }
     const keyTxt = (names.length > 1 ? names.slice(0, -1).join(", ") + " and " + names[names.length - 1] : names[0]) + " major";
     keyBtn.setAttribute("aria-label", "Keys: " + keyTxt + ". Change keys"); keyBtn.title = keyTxt;
