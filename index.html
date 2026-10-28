@@ -178,8 +178,17 @@ button:hover{filter:brightness(1.08)}
 .new-row{display:flex}
 .new-row #newBtn{padding:12px 22px;font-size:16px}
 .ctl-group{display:inline-flex;gap:14px;flex-wrap:nowrap}
+.loop-group{display:inline-flex;flex-wrap:wrap;gap:10px 14px;margin-left:46px}
+@media (max-width:620px){
+  .controls{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .controls #playBtn{grid-column:1/-1;justify-content:center;min-height:48px}
+  .loop-group{display:contents}
+  .loop-group button{justify-content:center;flex-wrap:wrap;row-gap:2px;text-align:center;min-height:48px;padding-inline:10px}
+  .loop-group #autoBtn{grid-column:1/-1}
+}
 .ctl-sep{width:1px;align-self:stretch;min-height:30px;background:var(--rule);margin:0 8px}
-.tempo{display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--ink-soft);margin-left:auto}
+.tempo{display:flex;align-items:center;gap:12px;flex:1 1 220px;max-width:420px;min-width:0}
+.tempo input[type=range]{flex:1;min-width:0}
 .tempo output{font-family:var(--f-mono);color:var(--ink);font-variant-numeric:tabular-nums;min-width:4.5ch}
 input[type=range]{accent-color:var(--accent);width:130px}
 .check{display:flex;align-items:center;gap:7px;font-size:13.5px;color:var(--ink-soft);cursor:pointer}
@@ -192,7 +201,7 @@ input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px}
 .rule.step b{color:var(--step)} .rule.leap b{color:var(--leap)} .rule.fifth b{color:var(--fifth)}
 .hint{font-size:13px;color:var(--ink-soft);margin:0}
 kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--rule);border-radius:3px;padding:0 5px;background:var(--paper)}
-@media (max-width:620px){.rules{grid-template-columns:repeat(2,minmax(0,1fr))}.tempo{margin-left:0}}
+@media (max-width:620px){.rules{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (prefers-reduced-motion:no-preference){.note .head-fill,.note .head-open{transition:fill .12s,stroke .12s}}
 </style>
 
@@ -233,12 +242,12 @@ kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--rule);border
   </fieldset>
 
   <div class="controls">
-    <span class="ctl-group">
     <button id="playBtn" type="button"><svg id="playIcon" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 1l9 5-9 5z" fill="currentColor"/></svg><span id="playTxt">Play</span></button>
+    <span class="loop-group" role="group" aria-label="Repeat options">
     <button id="loopBtn" type="button" aria-pressed="false"><svg width="15" height="14" viewBox="0 0 16 14" aria-hidden="true"><path d="M3 6V5a2 2 0 0 1 2-2h8M11 1l2 2-2 2M13 8v1a2 2 0 0 1-2 2H3M5 13l-2-2 2-2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>Repeat</button>
-    </span>
     <button id="crBtn" type="button" class="cr-btn" disabled aria-pressed="false" title="Turn on Repeat to use call and response">Call &amp; response<span class="cr-mode" id="crMode"></span></button>
-    <label class="tempo" for="bpm">Tempo <input type="range" id="bpm" min="50" max="160" step="2" value="92"><output id="bpmOut">92 bpm</output></label>
+    <button id="autoBtn" type="button" class="cr-btn" disabled aria-pressed="false" title="Turn on Repeat to get a new melody automatically">New melody after<span class="cr-mode" id="autoMode"></span></button>
+    </span>
   </div>
 
 
@@ -266,7 +275,10 @@ kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--rule);border
         <label class="chip"><input type="checkbox" name="meter" value="4" checked>4/4</label>
         <label class="chip"><input type="checkbox" name="meter" value="3">3/4</label>
       </div>
-      <span class="adv-note">Pick one or both. Styles use real tunes in that time where they exist.</span>
+    </div>
+    <div class="adv-row">
+      <label class="name" for="bpm">Tempo</label>
+      <span class="tempo"><input type="range" id="bpm" min="50" max="160" step="1" value="92"><output id="bpmOut" for="bpm">92 bpm</output></span>
     </div>
     <div class="adv-row">
       <span class="name" id="rangeLbl">Note range</span>
@@ -1453,11 +1465,17 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
         timers.push(setTimeout(()=>e.g && e.g.classList.remove("on"), at(st+du)-25));
       });
     });
-    timers.push(setTimeout(()=>{ if (my === cycle && loop) schedule(t0 + total); }, at(total)-200));
+    timers.push(setTimeout(()=>{
+      if (my !== cycle || !loop) return;
+      plays++;
+      if (autoN && plays >= autoN){ plays = 0; freshMelody(); }   // "New melody after": swap in a new melody without stopping
+      schedule(t0 + total);
+    }, at(total)-200));
     timers.push(setTimeout(()=>{ if (my === cycle && !loop){ playing = false; setPlayUI(); setEar(-1); } }, at(total)+150));
   }
+  let plays = 0;   // times the current melody has played through in this run (New melody after)
   function play(){
-    stop();
+    stop(); plays = 0;
     const c = audio(), my = cycle;
     playing = true; setPlayUI();
     warmPiano(melody, 600).then(() => { if (playing && my === cycle) schedule(c.currentTime + 0.08); });
@@ -1471,6 +1489,7 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
   // ---------- wiring ----------
   const bpm = document.getElementById("bpm"), bpmOut = document.getElementById("bpmOut");
   bpm.addEventListener("input", ()=> bpmOut.textContent = bpm.value + " bpm");
+  bpm.value = 86 + Math.floor(Math.random()*16); bpmOut.textContent = bpm.value + " bpm";   // a fresh tempo (86-101) each time the app opens
   function renderEar(){ earBars.innerHTML = Array.from({length:melody.nBars},(_,i)=>`<span>${i+1}</span>`).join(""); }
   const tuneInfo = document.getElementById("tuneInfo");
   function showTune(){
@@ -1491,10 +1510,13 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
     if (base.tonic === undefined) base.tonic = base.finalT ?? 0;
     return toKey(stamp(base), keyName);
   }
-  function regenerate(){
-    const was = playing; stop();
+  function freshMelody(){
     melody = makeMelody(); revealN = 0; syncView(); renderEar(); setMeta(); showTune(); warmPiano(melody);
     newBtn.classList.remove("stale"); newBtn.removeAttribute("title");
+  }
+  function regenerate(){
+    const was = playing; stop();
+    freshMelody();
     if (was) play();
   }
   document.getElementById("newBtn").addEventListener("click", regenerate);
@@ -1692,7 +1714,15 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
     const on = loop && crMode !== "off";
     crBtn.setAttribute("aria-pressed", String(on));
     document.getElementById("crMode").textContent = loop ? CR_MODES.find(m => m[0] === crMode)[1] : "";
+    autoBtn.disabled = !loop;
+    autoBtn.title = loop ? "Plays the melody this many times, then moves on to a new one. Click to switch: off, 1, 2, 4, 8." : "Turn on Repeat to get a new melody automatically";
+    autoBtn.setAttribute("aria-pressed", String(loop && autoN > 0));
+    document.getElementById("autoMode").textContent = loop && autoN ? `${autoN} play${autoN > 1 ? "s" : ""}` : "";
   }
+  // New melody after N plays (needs Repeat): off → 1 → 2 → 4 → 8
+  let autoN = 0;
+  const AUTO_STEPS = [0, 1, 2, 4, 8], autoBtn = document.getElementById("autoBtn");
+  autoBtn.addEventListener("click", () => { autoN = AUTO_STEPS[(AUTO_STEPS.indexOf(autoN) + 1) % AUTO_STEPS.length]; plays = 0; syncCR(); });
   crBtn.addEventListener("click", () => {
     const i = (CR_MODES.findIndex(m => m[0] === crMode) + 1) % CR_MODES.length;
     crMode = CR_MODES[i][0]; syncCR();
