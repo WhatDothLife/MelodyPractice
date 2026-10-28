@@ -104,6 +104,13 @@ button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);box-s
 .hints{display:inline-flex;flex-wrap:wrap;gap:8px}
 .hints.locked{opacity:.4;pointer-events:none}
 .hint-lbl{margin-left:2px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.vgroup{display:inline-flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
+@media (max-width:620px){
+  .vgroup{flex-basis:100%}
+  .vgroup .grp-label{min-width:52px;margin-left:0}
+  .vdivider{display:none}
+}
 .cof-btn{display:inline-flex;align-items:center;gap:14px;background:none;border:0;padding:0;margin:0;cursor:pointer;font:inherit;color:var(--ink);text-align:left}
 .cof-btn:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:50%}
 .cof-mini{width:104px;height:104px;flex:none}
@@ -239,17 +246,21 @@ kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--rule);border
   </section>
 
   <fieldset class="rhythms" style="border:0;margin:0;padding:0">
-    <legend class="grp-label" style="float:left;padding:0">View</legend>
+    <legend class="sr-only">View and hints</legend>
+    <span class="vgroup" role="group" aria-labelledby="viewLbl">
+    <span class="grp-label" id="viewLbl">View</span>
     <label class="chip"><input type="checkbox" id="showStaffChk">Show staff</label>
     <button type="button" class="chip" id="revealBtn" title="Show the staff one bar at a time">Reveal bar</button>
-    <span class="divider" aria-hidden="true"></span>
+    </span>
+    <span class="divider vdivider" aria-hidden="true"></span>
+    <span class="vgroup" role="group" aria-labelledby="hintLbl">
     <span class="grp-label hint-lbl" id="hintLbl">Hints</span>
     <button type="button" class="chip names-btn" id="namesBtn" aria-pressed="false" title="Note names. Click to switch: off, letters, scale degrees, solfège. Works with the full staff too.">Letters</button>
     <span class="hints" id="hints" role="group" aria-labelledby="hintLbl">
       <label class="chip"><input type="checkbox" id="hintRhythm">Rhythm</label>
     </span>
     <label class="chip" title="Shows the key of the melody"><input type="checkbox" id="hintKey">Key</label>
-    <label class="chip" title="Holds the root of each bar's chord under the melody"><input type="checkbox" id="rootDroneChk">Root drone</label>
+    </span>
   </fieldset>
 
   <div class="controls">
@@ -297,6 +308,10 @@ kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--rule);border
       <label class="chip"><input type="checkbox" id="autoPlayChk">Auto-play new melodies</label>
     </div>
     <div class="adv-row">
+      <span class="name">Drone</span>
+      <label class="chip" title="Holds the root of each bar's chord under the melody"><input type="checkbox" id="rootDroneChk">Root drone</label>
+    </div>
+    <div class="adv-row">
       <span class="name" id="rangeLbl">Note range</span>
       <div class="range2" role="group" aria-labelledby="rangeLbl">
         <div class="range2-track"><div class="range2-fill" id="rangeFill"></div></div>
@@ -325,9 +340,8 @@ kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--rule);border
       <span class="adv-note">Auto uses bass clef when most notes sit below middle C. Treble or Bass shifts notes by octaves to fit the staff, marked with an 8 on the clef, like guitar music.</span>
     </div>
     <div class="adv-row lockable">
-      <span class="name">Accidentals</span>
-      <label class="chip"><input type="checkbox" id="optSharp"><span class="sym">♯</span>Sharps</label>
-      <label class="chip"><input type="checkbox" id="optFlat"><span class="sym">♭</span>Flats</label>
+      <span class="name">Chromatics</span>
+      <label class="chip" title="Adds notes from outside the key (raised or lowered). They're spelled to fit the key."><input type="checkbox" id="optChrom"><span class="sym">♯♭</span>Chromatic notes</label>
     </div>
   </section>
 
@@ -1557,11 +1571,10 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
   }
   const setMeta = () => meta.textContent = `${melody.genre ? melody.genre + " · " : ""}${melody.nBars} bar${melody.nBars>1?"s":""}`;
   barsSeg.addEventListener("change", e => { adv.bars = Number(e.target.value); markStale(); });
-  for (const [id,key] of [["optSharp","sharp"],["optFlat","flat"]]){
-    const box = document.getElementById(id);
-    opt[key] = box.checked;
-    box.addEventListener("change", () => { opt[key] = box.checked; markStale(); });
-  }
+  // chromatics: one switch for raised and lowered notes outside the key
+  const chromBox = document.getElementById("optChrom");
+  opt.sharp = opt.flat = chromBox.checked;
+  chromBox.addEventListener("change", () => { opt.sharp = opt.flat = chromBox.checked; markStale(); });
   // key: like other settings, applies to the next New melody
   const modeDegs = [...document.querySelectorAll("#modeChips .deg")];
   function syncModeLetters(){   // mode chips name their starting note when a single key is selected
