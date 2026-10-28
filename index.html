@@ -36,7 +36,7 @@ h1{font-family:var(--f-display);font-weight:700;font-size:clamp(28px,5vw,40px);l
 .ver{font-family:var(--f-mono);font-weight:500;font-size:13px;letter-spacing:.04em;color:var(--ink-soft);border:1px solid var(--rule);border-radius:4px;padding:2px 6px;vertical-align:middle;margin-left:6px}
 .meta{font-family:var(--f-mono);font-size:12.5px;color:var(--ink-soft);letter-spacing:.06em;text-transform:uppercase}
 
-.score{background:var(--paper);border:1px solid var(--rule);border-radius:6px;padding:18px 10px 8px;
+.score{position:relative;background:var(--paper);border:1px solid var(--rule);border-radius:6px;padding:18px 10px 8px;
   box-shadow:0 1px 0 var(--rule),0 12px 30px -18px rgba(20,30,45,.35)}
 .score-scroll{overflow-x:auto}
 svg#staff{display:block;width:100%;height:auto}
@@ -61,6 +61,11 @@ svg#staff{display:block;width:100%;height:auto}
 .chip input{position:absolute;opacity:0;width:1px;height:1px}
 .chip .sym{font-family:var(--f-music);font-size:22px;line-height:1;min-width:20px;text-align:center;color:var(--ink-soft)}
 button.chip:disabled{opacity:.4;cursor:default}
+.cr-btn:disabled{opacity:.4;cursor:default;filter:none}
+.cr-mode{font:500 12.5px var(--f-mono);letter-spacing:.02em}
+.cr-mode:not(:empty)::before{content:"·";margin-right:7px;color:var(--ink-soft)}
+.turn-badge{position:absolute;top:10px;right:12px;margin:0;padding:3px 10px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font:600 12px var(--f-mono);letter-spacing:.06em;text-transform:uppercase}
+.ear-bars span.resp{border-color:var(--accent);color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 #revealBtn .count{font-family:var(--f-mono);font-size:12px;color:var(--ink-soft)}
 .names-btn{justify-content:center}
 button.chip.names-btn.on{border-color:var(--accent);color:var(--ink);box-shadow:inset 0 0 0 1px var(--accent)}
@@ -193,7 +198,7 @@ kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--rule);border
 
 <div class="wrap">
   <header>
-    <h1>Melody for Ear <span class="ver">v4.0</span></h1>
+    <h1>Melody for Ear <span class="ver">v4.1</span></h1>
     <div class="meta" id="meta">2 bars</div>
   </header>
 
@@ -203,6 +208,7 @@ kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--rule);border
 
   <p class="tune-info" id="tuneInfo" hidden></p>
   <section class="score" aria-label="Melody on a treble staff">
+    <p class="turn-badge" id="turnBadge" hidden aria-live="polite">Your turn</p>
     <p class="key-hint" id="keyHint" hidden></p>
     <p class="peek-hint" id="peekHint" hidden>Press and hold to see the full staff.</p>
     <div class="score-scroll" id="scoreWrap" hidden><svg id="staff" viewBox="0 0 820 180" role="img" aria-label="Generated melody"></svg></div>
@@ -231,6 +237,7 @@ kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--rule);border
     <button id="playBtn" type="button"><svg id="playIcon" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 1l9 5-9 5z" fill="currentColor"/></svg><span id="playTxt">Play</span></button>
     <button id="loopBtn" type="button" aria-pressed="false"><svg width="15" height="14" viewBox="0 0 16 14" aria-hidden="true"><path d="M3 6V5a2 2 0 0 1 2-2h8M11 1l2 2-2 2M13 8v1a2 2 0 0 1-2 2H3M5 13l-2-2 2-2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>Repeat</button>
     </span>
+    <button id="crBtn" type="button" class="cr-btn" disabled aria-pressed="false" title="Turn on Repeat to use call and response">Call &amp; response<span class="cr-mode" id="crMode"></span></button>
     <label class="tempo" for="bpm">Tempo <input type="range" id="bpm" min="50" max="160" step="2" value="92"><output id="bpmOut">92 bpm</output></label>
   </div>
 
@@ -249,7 +256,7 @@ kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--rule);border
       <dialog class="key-dlg" id="keyDlg" aria-labelledby="keyDlgTitle">
         <h3 id="keyDlgTitle">Keys</h3>
         <svg class="cof cof-big" id="cofBig" viewBox="-104 -104 208 208" role="group" aria-label="Circle of fifths"></svg>
-        <p class="adv-note">C, G and D are ready. The greyed-out keys are coming.</p>
+        <p class="adv-note" id="keyReady">C, G, D, F and B♭ are ready. The greyed-out keys are coming.</p>
         <div class="key-dlg-foot"><button type="button" class="primary" id="keyDone">Done</button></div>
       </dialog>
     </div>
@@ -323,7 +330,7 @@ kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--rule);border
     </div>
   </section>
 
-  <p class="hint">Click any note to hear it. Shortcuts: <kbd>N</kbd> new melody, <kbd>Space</kbd> play or stop, <kbd>R</kbd> repeat.</p>
+  <p class="hint">Click any note to hear it. Shortcuts: <kbd>N</kbd> new melody, <kbd>Space</kbd> play or stop, <kbd>R</kbd> repeat, <kbd>C</kbd> call and response.</p>
 </div>
 
 <script>
@@ -1056,7 +1063,8 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
   let labelMode = "off";   // note names: off, letters, numbers (scale degrees), solfege
   // ---------------- keys: melodies are made in C, then moved into the chosen key
   // sh: diatonic shifts that move C to the key's tonic (either octave); sig: sharps by letter (0=C .. 6=B)
-  const KEYS = { C:{ sh:[0,-7,7], sig:{} }, G:{ sh:[-3,4], sig:{3:1} }, D:{ sh:[1,-6], sig:{3:1,0:1} } };
+  const KEYS = { C:{ sh:[0,-7,7], sig:{}, ord:[] }, G:{ sh:[-3,4], sig:{3:1}, ord:[3] }, D:{ sh:[1,-6], sig:{3:1,0:1}, ord:[3,0] },
+                 F:{ sh:[3,-4], sig:{6:-1}, ord:[6] }, Bb:{ sh:[-1,6], sig:{6:-1,2:-1}, ord:[6,2] } };   // ord: signature order (F C G... / B E A...)
   let meterSel = [4];   // time signatures to choose from (beats per bar)
   let keyName = "C", keySel = ["C"];   // keyName: the key of the melody being made
   const accTxt = a => a === 1 ? "\u266F" : a === -1 ? "\u266D" : "";
@@ -1169,9 +1177,12 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
         const t = el("text",{x:CLEF === "bass" ? 48 : 50,y:cy,class:"octclef","text-anchor":"middle"}); t.textContent = tag;
       }
       // key signature on every line: F# then C#, at their standard places for the clef
-      const KSPOS = CLEF === "bass" ? [-4, -7] : [10, 7];
-      const kg = el("g",{"aria-label": `key signature: ${melody.key || "C"} major`});
-      for (let k=0; k<Object.keys(melody.keySig || {}).length; k++) drawAcc(76 + k*11, yAtTop(KSPOS[k], top), 1, kg);
+      // standard places for each sharp (F C G D A E B) and flat (B E A D G C F), by letter
+      const KSPOS = CLEF === "bass" ? { "1":{3:-4,0:-7,4:-3,1:-6,5:-9,2:-5,6:-8}, "-1":{6:-8,2:-5,5:-9,1:-6,4:-10,0:-7,3:-11} }
+                                    : { "1":{3:10,0:7,4:11,1:8,5:5,2:9,6:6},    "-1":{6:6,2:9,5:5,1:8,4:4,0:7,3:3} };
+      const ksig = melody.keySig || {}, kord = (KEYS[melody.key] || {}).ord || Object.keys(ksig).map(Number);
+      const kg = el("g",{"aria-label": `key signature: ${(melody.key || "C").replace("b", "\u266D")} major`});
+      kord.forEach((L, k) => drawAcc(76 + k*11, yAtTop(KSPOS[String(ksig[L])][L], top), ksig[L], kg));
       if (sI === 0) for (const [d,y] of [[String(melody.meter || 4),top+SP*2-2],["4",top+SP*4-2]]){ const t = el("text",{x:94 + KSW,y,class:"tsig","font-size":27,"text-anchor":"middle"}); t.textContent=d; }
       for (let b=sI*PER; b<=lastBar; b++){
         const g = barGeom(b), bx = g.x + g.w;
@@ -1375,7 +1386,11 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
     env.gain.setValueAtTime(1, t);
   }
   let loop = false, cycle = 0;
-  function setEar(b){ const cells = document.querySelectorAll("#earBars span"); cells.forEach((c,i)=>c.classList.toggle("on", i===b)); }
+  function setEar(b, resp){   // resp: the bar the player is answering (call and response)
+    const cells = document.querySelectorAll("#earBars span");
+    cells.forEach((c,i) => { c.classList.toggle("on", !resp && i===b); c.classList.toggle("resp", !!resp && i===b); });
+    const tb = document.getElementById("turnBadge"); if (tb) tb.hidden = !resp;
+  }
   let droneOn = false;
   // Chord drone: root and fifth two octaves down, the third softly an octave above them.
   function drone(root, t, dur, rootOnly){
@@ -1409,25 +1424,35 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
     playing = false; setPlayUI();
   }
   function schedule(t0){
-    const c = ctx, my = cycle, spb = 60/Number(bpm.value), MB = melody.meter || 4, total = melody.nBars*MB*spb;
+    const c = ctx, my = cycle, spb = 60/Number(bpm.value), MB = melody.meter || 4, nb = melody.nBars;
+    // the timeline, one slot per bar: which melody bar it belongs to and whether it plays or is the player's turn.
+    //  call and response "whole": the melody, then the same number of bars of rest; "bar": bar 1, rest, bar 2, rest...
+    const cr = loop ? crMode : "off", slots = [];
+    if (cr === "whole") for (const play of [true, false]) for (let b=0; b<nb; b++) slots.push({ b, play });
+    else if (cr === "bar") for (let b=0; b<nb; b++) slots.push({ b, play:true }, { b, play:false });
+    else for (let b=0; b<nb; b++) slots.push({ b, play:true });
+    const total = slots.length*MB*spb;
     const at = sec => Math.max(0, (t0 + sec - c.currentTime)*1000);
     if (timers.length > 600) timers = timers.slice(-300);
     if (nodes.length > 600) nodes = nodes.slice(-300);
     if (droneOn){
-      // one held tonic per run of bars that share a tonic
-      const nb = melody.nBars;
-      const tonics = Array.from({length:nb}, (_,b) => melody.roots ? melody.roots[b] : (melody.tonic ?? 0));
-      let b0 = 0;
-      for (let b=1; b<=nb; b++) if (b === nb || tonics[b] !== tonics[b0]){ drone(tonics[b0], t0 + b0*MB*spb, (b-b0)*MB*spb, droneOn === "root"); b0 = b; }
+      // one held tonic per run of slots that share a tonic; the drone keeps going under the player's turn
+      const tonics = slots.map(sl => melody.roots ? melody.roots[sl.b] : (melody.tonic ?? 0));
+      let s0 = 0;
+      for (let k=1; k<=slots.length; k++) if (k === slots.length || tonics[k] !== tonics[s0]){ drone(tonics[s0], t0 + s0*MB*spb, (k-s0)*MB*spb, droneOn === "root"); s0 = k; }
     }
-    melody.forEach(e => {
-      const st = (e.bar*MB + e.start)*spb, du = e.beats*spb;
-      if (e.rest) return;
-      tone(e.idx, du, t0+st, e.alt);
-      timers.push(setTimeout(()=>e.g && e.g.classList.add("on"), at(st)));
-      timers.push(setTimeout(()=>e.g && e.g.classList.remove("on"), at(st+du)-25));
+    slots.forEach((sl, k) => {
+      const base = k*MB*spb;
+      timers.push(setTimeout(()=>setEar(sl.b, !sl.play), at(base)));
+      if (!sl.play) return;
+      melody.forEach(e => {
+        if (e.bar !== sl.b || e.rest) return;
+        const st = base + e.start*spb, du = e.beats*spb;
+        tone(e.idx, du, t0+st, e.alt);
+        timers.push(setTimeout(()=>e.g && e.g.classList.add("on"), at(st)));
+        timers.push(setTimeout(()=>e.g && e.g.classList.remove("on"), at(st+du)-25));
+      });
     });
-    for (let b=0; b<melody.nBars; b++) timers.push(setTimeout(()=>setEar(b), at(b*MB*spb)));
     timers.push(setTimeout(()=>{ if (my === cycle && loop) schedule(t0 + total); }, at(total)-200));
     timers.push(setTimeout(()=>{ if (my === cycle && !loop){ playing = false; setPlayUI(); setEar(-1); } }, at(total)+150));
   }
@@ -1656,12 +1681,30 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
   const loopBtn = document.getElementById("loopBtn");
   function toggleLoop(){
     loop = !loop; loopBtn.setAttribute("aria-pressed", String(loop));
+    syncCR();
   }
+  // call and response (needs Repeat): off → whole melody then rest → one bar then rest, bar by bar
+  let crMode = "off";
+  const CR_MODES = [["off",""],["whole","whole melody"],["bar","bar by bar"]], crBtn = document.getElementById("crBtn");
+  function syncCR(){
+    crBtn.disabled = !loop;
+    crBtn.title = loop ? "Call and response: the melody plays, then you play it back in the rest. Click to switch: off, whole melody, bar by bar." : "Turn on Repeat to use call and response";
+    const on = loop && crMode !== "off";
+    crBtn.setAttribute("aria-pressed", String(on));
+    document.getElementById("crMode").textContent = loop ? CR_MODES.find(m => m[0] === crMode)[1] : "";
+  }
+  crBtn.addEventListener("click", () => {
+    const i = (CR_MODES.findIndex(m => m[0] === crMode) + 1) % CR_MODES.length;
+    crMode = CR_MODES[i][0]; syncCR();
+    if (playing) play();   // start over in the new pattern
+  });
+  syncCR();
   loopBtn.addEventListener("click", toggleLoop);
   document.addEventListener("keydown", e => {
     if (e.target.matches("input") || keyDlg.open) return;
     if (e.key==="n"||e.key==="N"){ regenerate(); }
     else if (e.key==="r"||e.key==="R"){ toggleLoop(); }
+    else if ((e.key==="c"||e.key==="C") && loop){ crBtn.click(); }
     else if (e.key===" " && !e.target.matches("button")){ e.preventDefault(); playing ? stop() : play(); }
   });
   if (document.fonts && document.fonts.load) document.fonts.load('48px "Noto Music"', "\u{1D11E}").then(()=>draw()).catch(()=>{});
