@@ -179,11 +179,13 @@ button:hover{filter:brightness(1.08)}
 .new-row{display:flex}
 .new-row #newBtn{padding:12px 22px;font-size:16px}
 .ctl-group{display:inline-flex;gap:14px;flex-wrap:nowrap}
-.loop-group{display:inline-flex;flex-wrap:wrap;gap:10px 14px;margin-left:46px}
+.loop-group{display:inline-flex;flex-wrap:wrap;gap:10px 14px}
+.ctl-divider{height:30px;margin:0 6px}
 @media (max-width:620px){
   .controls{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .controls #playBtn{grid-column:1/-1;justify-content:center;min-height:48px}
   .loop-group{display:contents}
+  .ctl-divider{grid-column:1/-1;width:auto;height:1px;margin:2px 0}
   .loop-group button{justify-content:center;flex-wrap:wrap;row-gap:2px;text-align:center;min-height:48px;padding-inline:10px}
   .loop-group #autoBtn{grid-column:1/-1}
 }
@@ -244,6 +246,7 @@ kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--rule);border
 
   <div class="controls">
     <button id="playBtn" type="button"><svg id="playIcon" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 1l9 5-9 5z" fill="currentColor"/></svg><span id="playTxt">Play</span></button>
+    <span class="divider ctl-divider" aria-hidden="true"></span>
     <span class="loop-group" role="group" aria-label="Repeat options">
     <button id="loopBtn" type="button" aria-pressed="false"><svg width="15" height="14" viewBox="0 0 16 14" aria-hidden="true"><path d="M3 6V5a2 2 0 0 1 2-2h8M11 1l2 2-2 2M13 8v1a2 2 0 0 1-2 2H3M5 13l-2-2 2-2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>Repeat</button>
     <button id="crBtn" type="button" class="cr-btn" disabled aria-pressed="false" title="Turn on Repeat to use call and response">Call &amp; response<span class="cr-mode" id="crMode"></span></button>
