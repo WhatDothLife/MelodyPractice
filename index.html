@@ -1362,9 +1362,9 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
     master.connect(comp); master.connect(conv); conv.connect(wet); wet.connect(comp); comp.connect(c.destination);
     return master;
   }
-  function tone(idx, dur, when, alt=0){
+  function tone(idx, dur, when, alt=0, vol=1){   // vol: loudness relative to a melody note
     const t = when ?? audio().currentTime + 0.01;
-    return pianoTone(idx, dur, t, alt);
+    return pianoTone(idx, dur, t, alt, vol);
   }
 
   // ---- Piano. Each pitch is rendered once (offline) into a buffer and then played as a single source,
@@ -1397,8 +1397,8 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
     const all = Promise.all(fs.map(renderPiano));
     return maxMs ? Promise.race([all, new Promise(r => setTimeout(r, maxMs))]) : all;
   }
-  function pianoTone(idx, dur, t, alt){
-    const c = audio(), out = bus(c), f = freq(idx, alt), vel = 0.85 + Math.random()*0.15;
+  function pianoTone(idx, dur, t, alt, vol=1){
+    const c = audio(), out = bus(c), f = freq(idx, alt), vel = (0.85 + Math.random()*0.15) * vol;
     const buf = pianoBufs.get(Math.round(f*100)), release = t + Math.max(dur, 0.2);
     if (!buf || release - t > PIANO_LEN - 0.7){ pianoVoice(c, out, f, dur, t, vel, true); if (!buf) renderPiano(f); return; }
     const src = c.createBufferSource(), g = c.createGain();
@@ -1485,6 +1485,30 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
     setEar(-1);
     playing = false; setPlayUI();
   }
+  // A quick I–V–I (one bar) that sets up the next melody's key, or its mode: chords are built from the key
+  // signature on the mode's tonic, so Dorian gets i–v–i and Mixolydian I–v–I. Phrygian's v is diminished, so it
+  // uses its own cadence chord, ♭II. With Mode focus the first bar's mode is used, since that's where the melody starts.
+  function cadence(t){
+    const spb = 60/Number(bpm.value), MB = melody.meter || 4, sig = melody.keySig || {}, my = cycle;
+    const m0 = melody.modes && melody.modes[0] != null ? melody.modes[0] : null;
+    const T = m0 != null ? deg(MODE_INFO[m0].tonic + (melody.keyTonic ?? 0)) : (melody.tonic ?? 0);
+    const semis = i => 12*Math.floor(i/7) + SEMI[deg(i)] + (sig[deg(i)] || 0);
+    const v = deg(T + 4), dim = ((semis(v + 4) - semis(v)) % 12 + 12) % 12 === 6;
+    const D = dim ? deg(T + 1) : v;
+    // voicing: triad with its root between C3 and B3, plus the root an octave below
+    const chord = (d, at, beats) => {
+      const r = -7 + d, du = beats*spb*0.95;
+      // soft: a set-up, not the main event (four notes at once would otherwise drown the melody)
+      for (const [i, vol] of [[r - 7, .3], [r, .2], [r + 2, .2], [r + 4, .2]]) tone(i, du, t + at*spb, sig[deg(i)] || 0, vol);
+    };
+    const plan = MB === 3 ? [[T,0,1],[D,1,1],[T,2,1]] : [[T,0,1],[D,1,1],[T,2,2]];
+    plan.forEach(([d, at, beats]) => chord(d, at, beats));
+    if (metro !== "off"){   // keep the metronome going through the set-up bar
+      const beats = metro === "all" ? [...Array(MB).keys()] : (MB === 3 ? [1, 2] : [1, 3]);
+      beats.forEach(bt => click(t + bt*spb, metro === "all" && bt === 0));
+    }
+    timers.push(setTimeout(() => { if (my === cycle) setEar(-1); }, Math.max(0, (t - ctx.currentTime)*1000)));
+  }
   function schedule(t0){
     const c = ctx, my = cycle, spb = 60/Number(bpm.value), MB = melody.meter || 4, nb = melody.nBars;
     // the timeline, one slot per bar: which melody bar it belongs to and whether it plays or is the player's turn.
@@ -1526,7 +1550,13 @@ Object.assign(TUNES, {"irish3":[["A Lover of Mild Behavior","air",1,0,"4h 5q;3h 
     timers.push(setTimeout(()=>{
       if (my !== cycle || !loop) return;
       plays++;
-      if (autoN && plays >= autoN){ plays = 0; freshMelody(); }   // "New melody after": swap in a new melody without stopping
+      if (autoN && plays >= autoN){   // "New melody after": a one-bar I–V–I in the new melody's key or mode, then the new melody
+        plays = 0; freshMelody();
+        const bar = (melody.meter || 4) * 60/Number(bpm.value);
+        cadence(t0 + total);
+        schedule(t0 + total + bar);
+        return;
+      }
       schedule(t0 + total);
     }, at(total)-200));
     timers.push(setTimeout(()=>{ if (my === cycle && !loop){ playing = false; setPlayUI(); setEar(-1); } }, at(total)+150));
